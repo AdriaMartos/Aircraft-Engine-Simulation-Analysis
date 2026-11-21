@@ -465,7 +465,7 @@ El cálculo sigue, pero el resultado necesita interpretación (chip amarillo):
 | `tests/mission.js` | Fuera de diseño = diseño en el punto de diseño; empuje estático plausible; misión ideal, cruise-climb y manual; T = D en crucero; masa monótona; aviso de ascenso imposible. | 14/14 |
 | `tests/calcs.js` | Cada paso de la memoria de cálculo coincide con el solver en 39 casos: turbojet y turbofán, 1 y 2 ejes, toberas conv. y conv.-div., M₀ de 0 a 2, más 3 puntos fuera de diseño. | 2257 pasos, todos coinciden |
 | `tests/edge.js` | Cada error y aviso de las secciones 11 y 12 aparece cuando toca. | 13/13 |
-| `tests/analysis.js` | Mapa del HPC, π_f·π_LPC·π_HPC = OPR, T_t25 y P_t25 iguales al solver, ṁ_c recuperado, η_HPC isentrópica; mapas de calor (la celda de diseño reproduce el diseño); figura de diseño del HPC; U = v₁ + v₂ y producto de etapas = π_HPC; Euler en la HPT; fuera de diseño = diseño en la condición de diseño y convergencia a nivel del mar. | 31/31 |
+| `tests/analysis.js` | Mapa del HPC, π_f·π_LPC·π_HPC = OPR, T_t25 y P_t25 iguales al solver, ṁ_c recuperado, η_HPC isentrópica; mapas de calor (la celda de diseño reproduce el diseño); figura de diseño del HPC; U = v₁ + v₂ y producto de etapas = π_HPC; Euler en la HPT; fuera de diseño = diseño en la condición de diseño y convergencia a nivel del mar. | 32/32 |
 | Pestaña *Validación* | Los 22 valores principales de los ejemplos, recalculados al abrir la página. | 22/22 |
 
 Durante la revisión también se hicieron barridos que no forman parte de los tests:
