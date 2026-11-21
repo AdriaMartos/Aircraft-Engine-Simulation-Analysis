@@ -9,6 +9,10 @@ assert "/*ENGINE*/" in tpl, "falta el marcador /*ENGINE*/ en la plantilla"
 mission = (root / "src" / "mission.js").read_text(encoding="utf-8")
 assert "/*MISSION*/" in tpl, "falta el marcador /*MISSION*/ en la plantilla"
 calcs = (root / "src" / "calcs.js").read_text(encoding="utf-8")
+analysis = (root / "src" / "analysis.js").read_text(encoding="utf-8")
+analysis_ui = (root / "src" / "analysis_ui.js").read_text(encoding="utf-8")
+for m in ("/*ANALYSIS*/", "/*ANALYSIS_UI*/"):
+    assert m in tpl, "falta el marcador " + m
 assert "/*CALCS*/" in tpl, "falta el marcador /*CALCS*/ en la plantilla"
-(root / "index.html").write_text(tpl.replace("/*ENGINE*/", engine).replace("/*MISSION*/", mission).replace("/*CALCS*/", calcs), encoding="utf-8")
+(root / "index.html").write_text(tpl.replace("/*ENGINE*/", engine).replace("/*MISSION*/", mission).replace("/*CALCS*/", calcs).replace("/*ANALYSIS*/", analysis).replace("/*ANALYSIS_UI*/", analysis_ui), encoding="utf-8")
 print("index.html generado")

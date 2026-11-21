@@ -7,7 +7,8 @@ Aplicación web para estudiar el ciclo de los motores de reacción. Eliges el mo
 - el **motor animado** (corte longitudinal) reaccionando a cada cambio,
 - los **resultados**: empuje, consumo específico (TSFC) y rendimientos,
 - todos los **cálculos del ciclo**: estaciones, componentes, diagrama T–s, potencias, dimensionado y una **memoria de cálculo** con cada ecuación sustituida,
-- una **simulación de vuelo** completa (ascenso, crucero y descenso) con el motor trabajando fuera de diseño.
+- una **simulación de vuelo** completa (ascenso, crucero y descenso) con el motor trabajando fuera de diseño,
+- un modo **Analizar un motor**, que guía paso a paso el estudio de un turbofán real a partir de sus datos y del mapa de su compresor de alta.
 
 Está creada para estudiar y entender mejor cómo funcionan los motores de reacción.
 
@@ -26,6 +27,7 @@ Está creada para estudiar y entender mejor cómo funcionan los motores de reacc
 5. [Resultados: tarjetas y pestañas](#5-resultados-tarjetas-y-pestañas)
 6. [Memoria de cálculo](#6-memoria-de-cálculo)
 7. [Simulación de vuelo (misión)](#7-simulación-de-vuelo-misión)
+7b. [Analizar un motor](#7b-analizar-un-motor)
 8. [Casos de ejemplo (presets)](#8-casos-de-ejemplo-presets)
 9. [Modelo de cálculo del ciclo](#9-modelo-de-cálculo-del-ciclo)
 10. [Modelo fuera de diseño](#10-modelo-fuera-de-diseño)
@@ -272,6 +274,42 @@ Entre dos puntos, la altitud y el Mach varían linealmente. En cada tramo se cal
 
 ---
 
+## 7b. Analizar un motor
+
+Arriba a la derecha, el selector **Explorar el ciclo / Analizar un motor** cambia de modo. El modo de análisis es un recorrido por pasos para estudiar un turbofán real de 2 ejes. Cada paso empieza con un desplegable **«Qué se hace en este paso y por qué»** que explica la teoría con las ecuaciones que se usan.
+
+| Paso | Estado | Contenido |
+|---|---|---|
+| 1 · Datos del motor | Disponible | Crucero (h₀, M₀), α, OPR, π_f, Tt4, combustible, eficiencias, toberas, gas y **mapa del compresor de alta**. Junto a cada dato hay un campo **«Fuente o supuesto»** para anotar de dónde sale. |
+| 2 · Punto de diseño | Disponible | Ciclo resuelto en crucero: F, F/ṁ₀, TSFC, η_T, η_P, η_O; estaciones, componentes, potencias, T–s y memoria de cálculo exportable. Botón para abrir el motor en el explorador (animación y misión). |
+| 3 · Mapas de calor | En construcción | F, TSFC y rendimientos variando π_LPC y π_HPC, con dos escenarios: ṁ_core y η_HPC fijos, o siguiendo la línea de operación del mapa. |
+| 4 · Compresor de alta | En construcción | Etapas repetidas, número de etapas y triángulos de velocidades. |
+| 5 · Turbina de alta | En construcción | Una etapa con velocidad axial constante y salida sin giro; triángulos de velocidades. |
+| 6 · Fuera de diseño | En construcción | El mismo motor a nivel del mar y Mach 0 (turbinas bloqueadas, α variable). |
+| 7 · Resumen | En construcción | Tablas de datos (con fuentes) y de resultados. |
+
+**Cómo se obtienen π_LPC y el caudal.**
+- El HPC sale de su mapa: el punto de diseño da π_HPC, la eficiencia **isentrópica** η_HPC y el caudal corregido ṁ_c,25.
+- π_LPC = OPR / (π_f · π_HPC).
+- Con T_t25 y P_t25 del ciclo: ṁ_core = ṁ_c,25 · δ₂₅ / √θ₂₅ (θ = T_t/T_ref, δ = P_t/P_ref; por defecto 288,15 K y 101 325 Pa) y ṁ₀ = (1 + α) · ṁ_core.
+- El HPC usa τ_HPC = 1 + (π_HPC^((γ−1)/γ) − 1)/η_HPC. El resto de componentes usan eficiencias politrópicas.
+
+**Mapa digitalizado.** El mapa del HPC incluido se ha digitalizado calibrando los ejes con la rejilla (error menor de 0,02 en π y en ṁ_c):
+
+| Dato | Valor |
+|---|---|
+| Punto de diseño | ṁ_c,25 = 20,0 kg/s · π_HPC = 6,59 · η_HPC ≈ 0,85 |
+| Línea de operación | π_HPC = 0,3574 · ṁ_c − 0,566, para ṁ_c entre 5,9 y 20,9 kg/s (π_HPC entre 1,54 y 6,90) |
+| η_HPC a lo largo de la línea | 0,70 (6,5 kg/s) · 0,75 (7,7) · 0,80 (10,2) · 0,82 (11,6) · 0,83 (12,4) · 0,84 (13,3) · 0,85 entre 15,2 y 20,0 · 0,84 (20,3) · 0,83 (20,6) · 0,82 (20,8) |
+
+Las eficiencias son los cruces de la línea con las isolíneas; entre ellos se interpola linealmente, y dentro de la isolínea de 0,85 se toma 0,85. Si leéis otro valor en la figura original, se puede cambiar en el paso 1.
+
+**Guardar y compartir.** Los datos se guardan automáticamente en el navegador. **Guardar archivo** descarga un `.json` con el motor (datos y fuentes) y **Cargar archivo** lo abre en otro ordenador: así todo el equipo trabaja con los mismos datos. **Empezar de cero** vuelve al motor de ejemplo, cuyos valores son genéricos y hay que sustituir.
+
+**Avisos del paso 1:** π_LPC < 1 (el OPR no llega para π_f y π_HPC) es un error. π_LPC casi 1 y π_HPC fuera del rango de la línea de operación son avisos.
+
+---
+
 ## 8. Casos de ejemplo (presets)
 
 | Caso | Datos |
@@ -410,6 +448,7 @@ El cálculo sigue, pero el resultado necesita interpretación (chip amarillo):
 | `tests/mission.js` | Fuera de diseño = diseño en el punto de diseño; empuje estático plausible; misión ideal, cruise-climb y manual; T = D en crucero; masa monótona; aviso de ascenso imposible. | 14/14 |
 | `tests/calcs.js` | Cada paso de la memoria de cálculo coincide con el solver en 39 casos: turbojet y turbofán, 1 y 2 ejes, toberas conv. y conv.-div., M₀ de 0 a 2, más 3 puntos fuera de diseño. | 2257 pasos, todos coinciden |
 | `tests/edge.js` | Cada error y aviso de las secciones 11 y 12 aparece cuando toca. | 13/13 |
+| `tests/analysis.js` | Mapa del HPC (punto de diseño sobre la línea, η), π_f·π_LPC·π_HPC = OPR, T_t25 y P_t25 iguales al solver, ṁ_c recuperado, η_HPC isentrópica, avisos. | 15/15 |
 | Pestaña *Validación* | Los 22 valores principales de los ejemplos, recalculados al abrir la página. | 22/22 |
 
 Durante la revisión también se hicieron barridos que no forman parte de los tests:
@@ -421,7 +460,7 @@ Durante la revisión también se hicieron barridos que no forman parte de los te
 Ejecutar todas las pruebas:
 
 ```bash
-npm test          # o: node tests/validate.js && node tests/mission.js && node tests/calcs.js && node tests/edge.js
+npm test          # ejecuta las 5 baterías de tests/
 ```
 
 GitHub ejecuta estas pruebas automáticamente en cada *push* y *pull request* (`.github/workflows/tests.yml`). También comprueba que `index.html` esté regenerado a partir de `src/`.
@@ -451,14 +490,17 @@ GitHub ejecuta estas pruebas automáticamente en cada *push* y *pull request* (`
 │   ├── engine.js              Solver del ciclo y modelo fuera de diseño (navegador y Node)
 │   ├── mission.js             Avión, atmósfera e integrador de la misión
 │   ├── calcs.js               Memoria de cálculo (fórmula, sustitución y resultado)
+│   ├── analysis.js            Modo «Analizar un motor»: mapa del HPC digitalizado y datos → punto de diseño
+│   ├── analysis_ui.js         Interfaz del modo de análisis (pasos, campos, mapa)
 │   └── template.html          Interfaz, estilos, textos de ayuda «i», dibujo y animación
 ├── tests/
 │   ├── validate.js            Solver frente a los ejemplos resueltos
 │   ├── mission.js             Fuera de diseño y misión
 │   ├── calcs.js               Memoria de cálculo frente al solver
-│   └── edge.js                Casos críticos (errores y avisos)
+│   ├── edge.js                Casos críticos (errores y avisos)
+│   └── analysis.js            Mapa del HPC, caudal corregido y punto de diseño del análisis
 ├── docs/                      Capturas del README
-├── build.py                   Junta src/*.js en template.html y genera index.html
+├── build.py                   Junta los módulos de src/ en template.html y genera index.html
 ├── package.json               Atajos: npm test, npm run build
 ├── .github/workflows/tests.yml  Pruebas automáticas en GitHub
 ├── LICENSE                    Licencia MIT
@@ -491,6 +533,7 @@ Para cambios grandes, mejor crear una rama y abrir un *pull request*: así otras
 | Un texto de ayuda «i» | `src/template.html`, objeto `INFO` |
 | Rangos o valores por defecto de los deslizadores | `src/template.html`, `BASE`, `SL` y `PRESETS` |
 | Valores por defecto de la misión | `src/template.html`, `MSDEF` y `MF_*` |
+| El modo de análisis (pasos, textos, mapa) | `src/analysis.js` (cálculo) y `src/analysis_ui.js` (interfaz) |
 | Un caso de ejemplo nuevo | `src/template.html`, `PRESETS` (y su validación en `VAL` si tiene valores de referencia) |
 
 ### Publicación (GitHub Pages)

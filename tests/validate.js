@@ -59,5 +59,5 @@ const rs = E.solve(sz).size;
 console.log('Dimensionado m0=400:', Object.fromEntries(Object.entries(rs).map(([k, v]) => [k, v && +v.toFixed(3)])));
 console.log('ISA 11 km', E.isa(11000), 'ISA 12 km', E.isa(12000));
 
-console.log(fails ? `\n${fails} de ${total} comprobaciones fuera de tolerancia` : `\nTodo correcto (${total} comprobaciones contra el apunte)`);
+console.log(fails ? `\n${fails} de ${total} comprobaciones fuera de tolerancia` : `\nTodo correcto (${total} comprobaciones contra los ejemplos de referencia)`);
 process.exit(fails ? 1 : 0);

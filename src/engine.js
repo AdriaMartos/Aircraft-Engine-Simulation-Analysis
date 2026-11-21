@@ -51,7 +51,9 @@ const Engine = (function () {
     let pic, tc, tlpc = 1, thpc = 1, pilpc = 1, pihpc = 1;
     if (two) {
       pilpc = d.pilpc; pihpc = d.pihpc;
-      tlpc = Math.pow(pilpc, epsC / c.ec); thpc = Math.pow(pihpc, epsC / c.ec);
+      tlpc = Math.pow(pilpc, epsC / c.ec);
+      // HPC: eficiencia isentrópica η_HPC si se da (eq. 3.25), si no, la politrópica e_c (eq. 3.24)
+      thpc = c.etaHPC > 0 ? 1 + (Math.pow(pihpc, epsC) - 1) / c.etaHPC : Math.pow(pihpc, epsC / c.ec);
       pic = pif * pilpc * pihpc; tc = tf * tlpc * thpc;
     } else {
       pic = d.pic; tc = Math.pow(pic, epsC / c.ec);
@@ -204,7 +206,7 @@ const Engine = (function () {
       }
       const pi = (t, e) => Math.pow(t, e / epsC);
       const des = Object.assign({}, dInp.design, { Tt4 });
-      if (two) { des.pif = isFan ? pi(tf, c.ef) : 1; des.pilpc = pi(tlpc, c.ec); des.pihpc = pi(thpc, c.ec); }
+      if (two) { des.pif = isFan ? pi(tf, c.ef) : 1; des.pilpc = pi(tlpc, c.ec); des.pihpc = c.etaHPC > 0 ? Math.pow(1 + c.etaHPC * (thpc - 1), 1 / epsC) : pi(thpc, c.ec); }
       else { des.pic = pi(tc, c.ec); des.pif = isFan ? pi(tf, c.ef) : 1; }
       const nz = Object.assign({}, dInp.nozzle);
       if (nz.kindCore === 'cd') nz.p0p9 = 1;

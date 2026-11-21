@@ -101,6 +101,7 @@ const Calcs = (function () {
     data('pin', 'Recuperación de presión de la tobera del núcleo', 'π_{n}', c.pin, '');
     if (isFan) data('pifn', 'Recuperación de presión de la tobera del fan', 'π_{fn}', c.pifn, '');
     data('ec', 'Eficiencia politrópica de los compresores', 'e_{c}', c.ec, '');
+    if (two && c.etaHPC > 0) data('etaHPC', 'Eficiencia isentrópica del compresor de alta', 'η_{HPC}', c.etaHPC, '');
     if (isFan) data('ef', 'Eficiencia politrópica del fan', 'e_{f}', c.ef, '');
     data('et', 'Eficiencia politrópica de las turbinas', 'e_{t}', c.et, '');
     data('etab', 'Rendimiento de la cámara de combustión', 'η_{b}', c.etab, '');
@@ -136,6 +137,10 @@ const Calcs = (function () {
     } else V.tf = 1;
     if (two) {
       st('tlpc', 'Relación de temperaturas del compresor de baja', 'τ_{LPC} = π_{LPC}^{(γ_{c}−1)/(γ_{c}·e_{c})}', '$pilpc$^{($gc$−1)/($gc$·$ec$)}', Math.pow(V.pilpc, epsC / V.ec), '', R.tlpc, { i: 'cm_lpc' });
+      if (c.etaHPC > 0) {
+        V.etaHPC = c.etaHPC;
+        st('thpc', 'Relación de temperaturas del compresor de alta (con su eficiencia isentrópica)', 'τ_{HPC} = 1 + (π_{HPC}^{(γ_{c}−1)/γ_{c}} − 1)/η_{HPC}', '1 + ($pihpc$^{($gc$−1)/$gc$} − 1)/$etaHPC$', 1 + (Math.pow(V.pihpc, epsC) - 1) / V.etaHPC, '', R.thpc, { i: 'cm_hpc', note: 'Eq. 3.25: se usa η_HPC isentrópica, la que da el mapa del compresor.' });
+      } else
       st('thpc', 'Relación de temperaturas del compresor de alta', 'τ_{HPC} = π_{HPC}^{(γ_{c}−1)/(γ_{c}·e_{c})}', '$pihpc$^{($gc$−1)/($gc$·$ec$)}', Math.pow(V.pihpc, epsC / V.ec), '', R.thpc, { i: 'cm_hpc' });
       st('pic', 'Relación de presiones total (2→3)', isFan ? 'π_{c} = π_{f}·π_{LPC}·π_{HPC}' : 'π_{c} = π_{LPC}·π_{HPC}', isFan ? '$pif$·$pilpc$·$pihpc$' : '$pilpc$·$pihpc$', V.pif * V.pilpc * V.pihpc, '', R.pic, { i: 'cm_tc' });
       st('tc', 'Relación de temperaturas total (2→3)', isFan ? 'τ_{c} = τ_{f}·τ_{LPC}·τ_{HPC}' : 'τ_{c} = τ_{LPC}·τ_{HPC}', isFan ? '$tf$·$tlpc$·$thpc$' : '$tlpc$·$thpc$', V.tf * V.tlpc * V.thpc, '', R.tc, { i: 'cm_tc' });

@@ -183,16 +183,90 @@ td.ic{padding-left:2px}
 .cl-row.dt .nm{color:var(--muted)}
 .cl-row.bad{background:color-mix(in srgb,var(--bad,#c0392b) 12%,transparent)}
 @media(max-width:760px){.cl-row{grid-template-columns:1fr}.cl-row .rs{text-align:left}}
+[hidden]{display:none!important}
+.modeseg{min-width:300px}
+.modeseg button{padding:7px 12px}
+.an-layout{display:grid;grid-template-columns:260px minmax(0,1fr);gap:16px;padding:16px 20px 28px;max-width:1560px;margin:0 auto;align-items:start}
+@media (max-width:980px){.an-layout{grid-template-columns:minmax(0,1fr);padding:12px 16px 24px}}
+.an-nav{padding:8px;position:sticky;top:12px;display:grid;gap:2px}
+@media (max-width:980px){.an-nav{position:static}}
+.an-nav button{display:grid;grid-template-columns:26px 1fr;gap:8px;align-items:start;text-align:left;border:0;background:transparent;color:var(--ink);padding:8px;border-radius:6px;cursor:pointer;font:500 13px var(--f-body)}
+.an-nav button:hover{background:var(--bg)}
+.an-nav button[aria-current="step"]{background:var(--accent-soft)}
+.an-nav button .k{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;border:1px solid var(--line);font:500 12px var(--f-mono);background:var(--panel)}
+.an-nav button[aria-current="step"] .k{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.an-nav button small{display:block;font-weight:400;font-size:11.5px;color:var(--muted);margin-top:1px}
+.an-nav button em{font-style:normal;font-size:10.5px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:0 6px;margin-left:4px;font-weight:400}
+.an-nav button.soon .t{color:var(--muted)}
+.an-io{border-top:1px solid var(--line);margin-top:6px;padding:10px 6px 4px;display:grid;gap:6px}
+.an-io .btn,.an-nav .an-io button.btn{display:block;width:100%;text-align:center;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:6px 10px;font:500 12.5px var(--f-body);border-radius:6px;cursor:pointer}
+.an-io input[type=text]{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:500 13px var(--f-body)}
+.an-io .note{margin:2px 0 0}
+label.btn{display:inline-block}
+.an-main{min-width:0;display:grid;gap:12px}
+.an-h{margin:0;font:600 18px/1.2 var(--f-disp)}
+.an-learn{border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:0 14px;margin:0}
+.an-learn>summary{padding:10px 0;font-weight:600;color:var(--accent)}
+.an-learn>div{font-size:13.5px;max-width:95ch;padding-bottom:10px}
+.an-learn li{margin:4px 0}
+.an-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:12px}
+.an-card{padding:12px 14px}
+.an-card h3{margin:0 0 8px;font:600 12px/1.2 var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center}
+.an-wide{grid-column:1/-1}
+.an-f{display:grid;grid-template-columns:minmax(0,1.3fr) 110px minmax(0,1fr);gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent);font-size:12.5px}
+.an-f label{display:block;line-height:1.35}
+.an-f label .info{vertical-align:middle}
+.an-f .u{color:var(--muted)}
+.an-f input,.an-f select{width:100%;padding:5px 7px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:13px var(--f-mono)}
+.an-f select{font-family:var(--f-body)}
+.an-f input.src{font:12px var(--f-body);color:var(--muted)}
+.an-f input.bad{border-color:var(--bad)}
+.an-f select{grid-column:2/4}
+@media (max-width:560px){.an-f{grid-template-columns:1fr 1fr}.an-f input.src{grid-column:1/-1}}
+.an-ro{display:flex;justify-content:space-between;padding:6px 0;font-size:12.5px;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
+.an-ro b{font:500 13px var(--f-mono)}
+.an-ro b.bad{color:var(--bad)}
+.an-tech{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-bottom:6px}
+.an-map{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.an-map{grid-template-columns:minmax(0,1fr)}}
+.an-map svg{width:100%;height:auto;display:block}
+.an-map svg .gr{stroke:var(--grid);stroke-width:1}
+.an-map svg .tk{fill:var(--muted);font:11px var(--f-mono)}
+.an-map svg .ax{fill:var(--muted);font:12px var(--f-body)}
+.an-map svg .ol{stroke:var(--s1);stroke-width:2.5}
+.an-map svg .et{stroke:var(--ink);stroke-width:1.2}
+.an-map svg .dp{fill:var(--panel);stroke:var(--s2);stroke-width:2.5}
+.an-map svg .us{fill:var(--s2);stroke:var(--panel);stroke-width:2}
+.an-map svg .cx{stroke:var(--muted);stroke-dasharray:3 3}
+.an-map svg .cp{fill:var(--s1);stroke:var(--panel);stroke-width:2}
+.an-legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin-top:4px}
+.an-legend i{display:inline-block;vertical-align:middle;margin-right:5px}
+.an-legend .ln{width:18px;height:2.5px;background:var(--s1)}
+.an-legend .pt{width:11px;height:11px;border-radius:50%;border:2.5px solid var(--s2);background:var(--panel)}
+.an-legend .pt.us{background:var(--s2);border-color:var(--panel);box-shadow:0 0 0 1px var(--s2)}
+.an-out .tiles{margin:6px 0 10px}
+.an-tiles .big{font-size:20px}
+.an-sheet h4{margin:10px 12px 2px;font:600 13px var(--f-body)}
+.an-sheet h4:empty{display:none}
+.an-sheet .intro{margin:0 12px 6px;font-size:12px;color:var(--muted)}
+.an-next{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 </style>
 </head>
 <body>
 <header>
   <h1>Simulador de ciclo de motor</h1>
   <p>Turbojet y turbofán de escape separado, calculados con el análisis de ciclo on-design (ref. Mattingly). Mueve los parámetros y mira cómo cambian el ciclo y el flujo.</p>
+  <div class="seg modeseg" id="segMode" role="group" aria-label="Modo"><button type="button" data-v="ex" aria-pressed="true">Explorar el ciclo</button><button type="button" data-v="an" aria-pressed="false">Analizar un motor</button></div>
   <span class="chip" id="valChip">Validando…</span>
 </header>
 
-<div class="layout">
+<div class="an-layout" id="anView" hidden>
+  <nav class="card an-nav" id="anNav" aria-label="Pasos del análisis"></nav>
+  <main class="an-main" id="anMain"></main>
+</div>
+
+<div class="layout" id="exView">
   <aside class="card controls" aria-label="Parámetros">
     <h2>Casos de ejemplo</h2>
     <div class="presets" id="presets"></div>
@@ -233,6 +307,7 @@ td.ic{padding-left:2px}
       <button type="button" data-v="4" aria-pressed="false">N4</button>
     </div>
     <div class="note">Nivel tecnológico de la Tabla 3.3 (N3: 1985–2005, N4: actual). Aplica eficiencias y pérdidas típicas.</div>
+    <div class="note" id="etaHNote" hidden></div>
     <details><summary>Ajuste fino de eficiencias</summary><div id="gEff"></div></details>
     <details id="detGas"><summary>Gas y combustible</summary>
       <div class="sl"><div class="row"><label for="fuelSel">Combustible</label></div>
@@ -280,6 +355,9 @@ td.ic{padding-left:2px}
 </script>
 <script>
 /*CALCS*/
+</script>
+<script>
+/*ANALYSIS*/
 </script>
 <script>
 (function(){
@@ -399,7 +477,7 @@ function toInput(s){
   const a=isaOrOv(s);
   return {arch:s.arch,flight:{T0:a.T,P0:a.P,M0:s.M0},gas:s.gas,
     design:{spools:s.spools,pic:s.pic,pif:s.pif,pilpc:s.pilpc,pihpc:s.pihpc,alpha:s.alpha,Tt4:s.tlMode?s.tl*s.gas.cpc*a.T/s.gas.cpt:s.Tt4},
-    comp:{pidmax:s.pidmax,pib:s.pib,pin:s.pin,pifn:s.pifn,ec:s.ec,ef:s.ef,et:s.et,etab:s.etab,etam:s.etam},
+    comp:{pidmax:s.pidmax,pib:s.pib,pin:s.pin,pifn:s.pifn,ec:s.ec,ef:s.ef,et:s.et,etab:s.etab,etam:s.etam,etaHPC:s.spools==='two'&&s.etaHPC>0?s.etaHPC:0},
     nozzle:{kindCore:s.kindCore,p0p9:s.p0p9,kindFan:s.kindFan,p0p19:s.p0p19},
     size:{mdot0:s.mdot0,M2:.5}};
 }
@@ -565,7 +643,7 @@ function tabComponents(){
   const add=(n,pi,ta,ex,key)=>rows.push(`<tr><td>${n}</td><td class="n">${pi==null?'–':fmt(pi,4)}</td><td class="n">${ta==null?'–':fmt(ta,4)}</td><td class="n" style="text-align:left;color:var(--muted)">${ex||''}</td><td class="ic">${ib(key)}</td></tr>`);
   add('Toma (π<sub>d</sub> = π<sub>d máx</sub>·η<sub>r</sub>)',r.pid,1,'η<sub>r</sub> = '+fmt(r.etar,4),'cm_d');
   if(r.isFan)add('Fan',r.pif,r.tf,'e<sub>f</sub> = '+fmt(S.ef,3),'cm_f');
-  if(r.two){add('Compresor de baja',r.pilpc,r.tlpc,'e<sub>c</sub> = '+fmt(S.ec,3),'cm_lpc');add('Compresor de alta',r.pihpc,r.thpc,'e<sub>c</sub> = '+fmt(S.ec,3),'cm_hpc');}
+  if(r.two){add('Compresor de baja',r.pilpc,r.tlpc,'e<sub>c</sub> = '+fmt(S.ec,3),'cm_lpc');add('Compresor de alta',r.pihpc,r.thpc,r.inp&&r.inp.comp.etaHPC>0?'η<sub>HPC</sub> = '+fmt(r.inp.comp.etaHPC,3)+' (isentrópica)':'e<sub>c</sub> = '+fmt(S.ec,3),'cm_hpc');}
   else add('Compresor (2→3)',r.pic,r.tc,'e<sub>c</sub> = '+fmt(S.ec,3),'cm_c');
   add('Compresión total (2→3)',r.pic,r.tc,'','cm_tc');
   add('Cámara de combustión',S.pib,r.Tt4/r.Tt3,`f = ${fmt(r.f,5)}, τ<sub>λ</sub> = ${fmt(r.tl,3)}`,'cm_b');
@@ -625,12 +703,12 @@ function tabValidation(){
 /* Diagrama T–s con puntos interactivos */
 let TSPTS=[],TSGEO=null;
 function tabTS(){return `<div class="tsbox"><canvas class="ts" id="tsCv" width="760" height="420" role="img" aria-label="Diagrama temperatura-entropía del ciclo. Pasa el cursor sobre los puntos para ver sus valores."></canvas></div><p class="foot">Estados totales del ciclo (en la tobera, la temperatura estática de salida). Línea continua: núcleo; discontinua: bypass. La tobera se dibuja a entropía constante (vertical) hasta la presión estática de salida; la cesión de calor al ambiente cierra el ciclo en la estela. <b>Pasa el cursor sobre un punto</b> para ver T, P y s, y pulsa «i» para entender el diagrama ${ib('ts')}.</p>`;}
-function drawTS(hov){
-  const cv=$('#tsCv');if(!cv||!R.ok)return;
+function drawTS(hov,cvIn,ctxIn){
+  const cv=cvIn||$('#tsCv'),RR=ctxIn?ctxIn.R:R,SS=ctxIn?ctxIn.S:S;if(!cv||!RR||!RR.ok)return;cv._ctx=ctxIn||null;
   const dpr=window.devicePixelRatio||1,W=760,H=420;cv.width=W*dpr;cv.height=H*dpr;
   const c=cv.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);
   const cs=getComputedStyle(document.documentElement),col=n=>cs.getPropertyValue(n).trim();
-  const r=R,g=S.gas,Rc=r.Rc,Rt=r.Rt,T0=r.T0,P0=r.P0;
+  const r=RR,g=SS.gas,Rc=r.Rc,Rt=r.Rt,T0=r.T0,P0=r.P0;
   const sC=(T,P)=>g.cpc*Math.log(T/T0)-Rc*Math.log(P/P0);
   const s4=sC(r.Tt4,r.Pt4);
   const sH=(T,P)=>s4+g.cpt*Math.log(T/r.Tt4)-Rt*Math.log(P/r.Pt4);
@@ -638,14 +716,14 @@ function drawTS(hov){
   const lin=(a,b,n,f)=>{for(let i=0;i<=n;i++){const t=i/n;f(a+(b-a)*t);}};
   pathC.push([sC(T0,P0),T0]);pathC.push([sC(r.Tt2,r.Pt2),r.Tt2]);
   const eps=(g.gc-1)/g.gc;
-  lin(r.Tt2,r.Tt3,30,T=>{const P=r.Pt2*Math.pow(T/r.Tt2,S.ec/eps);pathC.push([sC(T,P),T]);});
+  lin(r.Tt2,r.Tt3,30,T=>{const P=r.Pt2*Math.pow(T/r.Tt2,SS.ec/eps);pathC.push([sC(T,P),T]);});
   lin(r.Tt3,r.Tt4,10,T=>{const P=r.Pt3+(r.Pt4-r.Pt3)*(T-r.Tt3)/(r.Tt4-r.Tt3);pathC.push([T>=r.Tt4-1e-6?s4:sC(T,P),T]);});
   const epsT=(g.gt-1)/g.gt;
-  lin(r.Tt4,r.Tt5,30,T=>{const P=r.Pt4*Math.pow(T/r.Tt4,1/(epsT*S.et));pathC.push([sH(T,P),T]);});
+  lin(r.Tt4,r.Tt5,30,T=>{const P=r.Pt4*Math.pow(T/r.Tt4,1/(epsT*SS.et));pathC.push([sH(T,P),T]);});
   const s9=sH(r.Tt5,r.Pt9);pathC.push([s9,r.Tt5]);pathC.push([s9,r.core.T9]);
   const sEnd=sH(r.core.T9,P0);
   if(r.isFan){pathB.push([sC(T0,P0),T0],[sC(r.Tt2,r.Pt2),r.Tt2]);
-    lin(r.Tt2,r.Tt13,20,T=>{const P=r.Pt2*Math.pow(T/r.Tt2,S.ef/eps);pathB.push([sC(T,P),T]);});
+    lin(r.Tt2,r.Tt13,20,T=>{const P=r.Pt2*Math.pow(T/r.Tt2,SS.ef/eps);pathB.push([sC(T,P),T]);});
     const s19=sC(r.Tt13,r.Pt19);pathB.push([s19,r.Tt13],[s19,r.fan.T19]);}
   const all=pathC.concat(pathB);
   const xs=all.map(p=>p[0]).concat([sEnd]),ys=all.map(p=>p[1]);
@@ -686,13 +764,13 @@ function drawTS(hov){
       const tip=$('#tip');
       const rc=cv.getBoundingClientRect(),k=TSGEO.W/rc.width,mx=(e.clientX-rc.left)*k,my=(e.clientY-rc.top)*k;
       let best=-1,bd=18;TSPTS.forEach((p,i)=>{const d=Math.hypot(p.px-mx,p.py-my);if(d<bd){bd=d;best=i;}});
-      if(best!==cv._last){cv._last=best;drawTS(best>=0?best:undefined);}
+      if(best!==cv._last){cv._last=best;drawTS(best>=0?best:undefined,cv,cv._ctx);}
       if(best<0){tip.hidden=true;return;}
       const p=TSPTS[best];
       tip.innerHTML=`<b>${p.n} · ${p.name}</b><br>${p.static?'T (estática)':'T<sub>t</sub>'} = ${fmt(p.T,1)} K<br>${p.static?'P (estática)':'P<sub>t</sub>'} = ${fmt(p.P/1000,2)} kPa<br>s − s₀ = ${fmt(p.s,1)} J/(kg·K)`;
       tip.hidden=false;placeTip(tip,e.clientX,e.clientY);
     });
-    cv.addEventListener('pointerleave',()=>{$('#tip').hidden=true;if(cv._last>=0){cv._last=-1;drawTS();}});
+    cv.addEventListener('pointerleave',()=>{$('#tip').hidden=true;if(cv._last>=0){cv._last=-1;drawTS(undefined,cv,cv._ctx);}});
   }
 }
 function niceTicks(a,b,n){const st=(b-a)/n,m=Math.pow(10,Math.floor(Math.log10(st))),k=[1,2,2.5,5,10].find(v=>v*m>=st)*m;const o=[];for(let v=Math.ceil(a/k)*k;v<=b;v+=k)o.push(v);return o;}
@@ -815,7 +893,7 @@ function spawn(initial){
 }
 function initParts(){parts=[];for(let i=0;i<NP;i++)parts.push(spawn(true));}
 function pxSpeed(v){return 16+0.5*v;}
-function frame(ts){
+function frame(ts){if(typeof MODE!=='undefined'&&MODE==='an'){requestAnimationFrame(frame);return;}
   const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
   if(R&&R.ok&&GEO&&TB){
     if(playing){
@@ -1235,6 +1313,7 @@ function applyView(r){
 }
 function update(){
   syncControls();
+  {const n=$('#etaHNote');if(n){const on=S.spools==='two'&&S.etaHPC>0;n.hidden=!on;if(on){n.innerHTML=`HPC con eficiencia isentrópica η<sub>HPC</sub> = ${fmt(S.etaHPC,3)} (del análisis del motor). <button type="button" class="btn" id="etaHClr">Usar e<sub>c</sub></button>`;$('#etaHClr').addEventListener('click',()=>{S.etaHPC=0;update();});}}}
   RD=Engine.solve(toInput(S));R=RD;FV=null;MSCRUB=-1;MDIRTY=true;
   $('#btnBack').hidden=true;
   renderAlerts();renderTiles();
@@ -1249,10 +1328,12 @@ function applyPreset(i){
   update();
 }
 function applyTech(n,silent){
-  const t=TECH[n];S.tech=n;
+  const t=TECH[n];S.tech=n;S.etaHPC=0;
   for(const k of Object.keys(t)){if(k==='Tt4')S.Tt4=Math.min(S.Tt4,t.Tt4);else S[k]=t[k];}
   if(!silent)update();
 }
+
+/*ANALYSIS_UI*/
 
 /* ---------- Arranque ---------- */
 buildSliders();buildGas();buildTabs();
@@ -1274,6 +1355,8 @@ $('#btnClr').addEventListener('click',()=>{REF=null;$('#btnClr').hidden=true;ren
 if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches){playing=false;$('#btnPlay').textContent='Reanudar';}
 runValidation();
 update();
+anLoad();$('#segMode').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.v)));
+try{if(localStorage.getItem(AN_KEY+'-mode')==='an')setMode('an');}catch(e){}
 requestAnimationFrame(frame);
 new MutationObserver(()=>{tokCache=null;if(R)renderPanel();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{tokCache=null;if(R)renderPanel();});
