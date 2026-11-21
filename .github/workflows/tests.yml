@@ -1,0 +1,23 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Comprobar que index.html está actualizado
+        run: |
+          python3 build.py
+          git diff --exit-code index.html || (echo "::error::index.html no coincide con src/. Ejecuta python3 build.py y sube el index.html regenerado." && exit 1)
+      - name: Tests
+        run: npm test

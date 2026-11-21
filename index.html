@@ -1,0 +1,2088 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador de ciclo de motor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Plan: hoja de dibujo técnica. Neutros fríos, acento azul tinta, color cálido reservado para el calor del flujo.
+   Disposición: controles a la izquierda, corte animado arriba, cálculos debajo. */
+:root{
+  --bg:#f2f4f6; --panel:#ffffff; --ink:#16202b; --muted:#5a6675; --line:#d8dde4;
+  --accent:#1f5fbf; --accent-ink:#ffffff; --accent-soft:#e6eefb;
+  --canvas:#edf1f5; --grid:#dde3ea; --metal:#8794a4; --heat:#d9531e;
+  --good:#17784a; --warn:#a85f00; --bad:#b3261e;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#6250d6;
+  --f-body:'IBM Plex Sans',system-ui,sans-serif; --f-disp:'IBM Plex Sans Condensed','IBM Plex Sans',sans-serif; --f-mono:'IBM Plex Mono',ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d131a; --panel:#141c26; --ink:#e5eaf0; --muted:#92a0b1; --line:#243040;
+    --accent:#6fb0ff; --accent-ink:#06121f; --accent-soft:#16283f;
+    --canvas:#0a1017; --grid:#16202b; --metal:#6b7d91; --heat:#ff7a3d;
+    --good:#4fd08a; --warn:#f0a63a; --bad:#ff7b72; color-scheme:dark;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#9085e9;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d131a; --panel:#141c26; --ink:#e5eaf0; --muted:#92a0b1; --line:#243040;
+  --accent:#6fb0ff; --accent-ink:#06121f; --accent-soft:#16283f;
+  --canvas:#0a1017; --grid:#16202b; --metal:#6b7d91; --heat:#ff7a3d;
+  --good:#4fd08a; --warn:#f0a63a; --bad:#ff7b72; color-scheme:dark;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#9085e9;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--f-body)}
+.num,td.n,.v{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 24px;padding:14px 20px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{margin:0;font:600 20px/1.2 var(--f-disp);letter-spacing:.01em;text-wrap:balance}
+header p{margin:0;color:var(--muted);flex:1 1 320px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;border:1px solid var(--line);font-size:12px;color:var(--muted);background:var(--bg)}
+.chip.ok{color:var(--good);border-color:color-mix(in srgb,var(--good) 40%,var(--line))}
+.chip.warn{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+.chip.bad{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,var(--line))}
+.layout{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;padding:16px 20px 28px;max-width:1560px;margin:0 auto;align-items:start}
+@media (max-width:980px){.layout{grid-template-columns:minmax(0,1fr);padding:12px 16px 24px}.stage{order:-1}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px}
+.controls{padding:14px 14px 6px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}
+@media (max-width:980px){.controls{position:static;max-height:none}}
+.controls h2{margin:14px 0 8px;font:600 11px/1 var(--f-body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.controls h2:first-child{margin-top:0}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--ink);padding:7px 6px;font:500 13px var(--f-body);cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.presets{display:grid;gap:6px}
+.presets button{text-align:left;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:7px 9px;font:13px var(--f-body);cursor:pointer}
+.presets button small{display:block;color:var(--muted);font-size:11.5px}
+.presets button:hover{border-color:var(--accent)}
+.sl{margin:9px 0}
+.sl .row{display:flex;justify-content:space-between;gap:8px;font-size:12.5px}
+.sl .row .v{color:var(--accent);font-weight:500}
+.sl input[type=range]{width:100%;margin:4px 0 0;accent-color:var(--accent)}
+.sl.hidden{display:none}
+select{width:100%;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:13px var(--f-body)}
+.note{font-size:12px;color:var(--muted);margin:6px 0}
+details{margin:6px 0;border-top:1px solid var(--line);padding-top:6px}
+summary{cursor:pointer;font-size:12.5px;color:var(--muted);padding:4px 0}
+.stage{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;min-width:0}
+.viz{padding:10px 12px 12px}
+.viz-top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px}
+.viz-top .t{font:600 14px var(--f-disp);letter-spacing:.01em}
+.viz-top .ctl{display:flex;gap:8px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:5px 10px;font:500 12.5px var(--f-body);cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+#cv{width:100%;aspect-ratio:1000/380;display:block;border-radius:6px;background:var(--canvas)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;margin-top:8px;font-size:12px;color:var(--muted)}
+.legend .bar{width:140px;height:8px;border-radius:4px;background:linear-gradient(90deg,#2f6df0,#1fb5c9,#d7d34a,#f08a24,#d82b2b)}
+.alerts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile{padding:10px 12px}
+.tile .l{font-size:11.5px;color:var(--muted)}
+.tile .big{font:500 24px/1.15 var(--f-mono);margin-top:2px}
+.tile .u{font-size:11.5px;color:var(--muted)}
+.tile .d{font:12px var(--f-mono);margin-top:2px;min-height:16px}
+.d.up{color:var(--good)} .d.down{color:var(--bad)}
+.tabs{padding:0}
+.tablist{display:flex;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.tablist button{border:0;background:transparent;color:var(--muted);padding:11px 14px;font:500 13px var(--f-body);cursor:pointer;border-bottom:2px solid transparent}
+.tablist button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.panel{padding:12px 14px 16px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{font:600 11.5px var(--f-body);color:var(--muted);text-align:right;padding:6px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td{padding:6px 10px;border-bottom:1px solid color-mix(in srgb,var(--line) 60%,transparent);text-align:right;white-space:nowrap}
+td:first-child{font-family:var(--f-body)}
+tr.hl td{background:var(--accent-soft)}
+.st{display:inline-block;min-width:26px;color:var(--accent);font-family:var(--f-mono);font-weight:500}
+.ts{width:100%;aspect-ratio:760/420;display:block}
+.bars{display:grid;gap:10px;max-width:760px}
+.bar-row{display:grid;grid-template-columns:200px minmax(80px,1fr) 230px;gap:10px;align-items:center;font-size:13px}
+.bar-row .num{white-space:nowrap}
+.bar-row .b{height:12px;background:var(--bg);border-radius:3px;overflow:hidden}
+.bar-row .b i{display:block;height:100%;background:var(--accent)}
+.bar-row .b i.heat{background:var(--heat)}
+.ok{color:var(--good)} .bad{color:var(--bad)}
+.foot{font-size:12px;color:var(--muted);margin-top:10px;max-width:80ch}
+
+.info{display:inline-grid;place-items:center;width:16px;height:16px;margin-left:6px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--bg);color:var(--muted);font:italic 600 10.5px/1 Georgia,serif;cursor:pointer;vertical-align:middle;flex:none}
+.info:hover{border-color:var(--accent);color:var(--accent)}
+td.ic,th:last-child.icth{width:28px;text-align:right}
+td.ic{padding-left:2px}
+.tile{position:relative}
+.tile .info{position:absolute;top:8px;right:8px;margin:0}
+.sl .row label{display:inline-flex;align-items:center}
+#pop{position:fixed;z-index:50;width:min(380px,calc(100vw - 16px));max-height:min(70vh,520px);overflow:auto;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.22);font-size:13px}
+#pop .ph{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel)}
+#pop .ph b{font:600 14px var(--f-disp)}
+#pop .px{border:0;background:transparent;color:var(--muted);font-size:20px;line-height:1;cursor:pointer;padding:0 4px}
+#pop .pb{padding:8px 12px 12px}
+#pop .pb p{margin:6px 0}
+.eq{font-family:var(--f-mono);font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:0 5px;display:inline-block;margin:1px 0}
+.warnp{color:var(--warn)}
+#tip{position:fixed;z-index:60;pointer-events:none;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:7px 10px;font:12px/1.5 var(--f-mono);box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.tsbox{max-width:760px}
+.sl input[type=number]{width:100%;margin-top:4px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:13px var(--f-mono)}
+.sl input[type=number].bad{border-color:var(--bad)}
+.gasgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+
+.msbox h3{margin:0 0 6px;font:600 11px/1 var(--f-body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px 22px;margin:6px 0 10px}
+.mf{display:block;margin:7px 0;font-size:12.5px}
+.mf>span{display:flex;align-items:center}
+.mf input[type=number],.mf select,.wpt input{width:100%;margin-top:3px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:13px var(--f-mono)}
+.mf select{font-family:var(--f-body)}
+.mf input.bad,.wpt input.bad{border-color:var(--bad)}
+.mf input:disabled{opacity:.6}
+.mf.chk{display:flex;gap:8px;align-items:flex-start}
+.mf.chk input{margin-top:2px}
+.wpt{max-width:560px;margin:6px 0}
+.wpt td,.wpt th{padding:3px 6px;text-align:left}
+.wpt input{margin:0}
+.btn.sm{padding:2px 8px;font-size:12px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.msbtn{display:flex;gap:10px;align-items:center;margin:8px 0}
+.big.sm{font-size:19px}
+.ms-kpi{margin:10px 0}
+.msscrub{margin:12px 0 4px}
+.msscrub label{display:block;font-size:12px;color:var(--muted)}
+.msscrub input{width:100%;accent-color:var(--accent)}
+.msread{display:flex;flex-wrap:wrap;gap:4px 16px;font:12px/1.5 var(--f-mono);padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);align-items:center}
+.msread i{font-style:normal;color:var(--muted);margin-right:4px}
+.mcharts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:12px 0}
+.mchart{margin:0}
+.mchart figcaption{font:600 12.5px var(--f-body);color:var(--ink);margin-bottom:2px;display:flex;align-items:center}
+.mchart canvas{width:100%;display:block;height:210px}
+.msdet{margin-top:8px}
+.tscroll{max-height:320px;overflow:auto}
+@media (max-width:560px){.bar-row{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+.cl-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.cl-bar .sp{flex:1}
+.cl-sec{margin:10px 0;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.cl-sec>summary{padding:9px 12px;font:600 13.5px var(--f-body);color:var(--ink);cursor:pointer}
+.cl-sec>summary .n{font-weight:400;color:var(--muted);margin-left:6px;font-size:12px}
+.cl-sec .intro{margin:0 12px 6px;font-size:12px;color:var(--muted);max-width:90ch}
+.cl-row{display:grid;grid-template-columns:minmax(150px,230px) minmax(0,1fr) minmax(130px,200px);gap:4px 14px;padding:7px 12px;border-top:1px solid color-mix(in srgb,var(--line) 60%,transparent);align-items:start}
+.cl-row .nm{font-size:12.5px;color:var(--ink)}
+.cl-row .fm{font-family:var(--f-mono);font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.cl-row .fm .sb{display:block;color:var(--ink);margin-top:2px}
+.cl-row .fm .nt{display:block;font-family:var(--f-body);font-size:11.5px;margin-top:2px}
+.cl-row .rs{font-family:var(--f-mono);font-size:13px;text-align:right;color:var(--ink)}
+.cl-row .rs b{font-weight:600}
+.cl-row .rs .u{color:var(--muted);font-size:11.5px}
+.cl-row .rs .al{display:block;color:var(--muted);font-size:11px}
+.cl-row.dt{padding:4px 12px}
+.cl-row.dt .nm{color:var(--muted)}
+.cl-row.bad{background:color-mix(in srgb,var(--bad,#c0392b) 12%,transparent)}
+@media(max-width:760px){.cl-row{grid-template-columns:1fr}.cl-row .rs{text-align:left}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Simulador de ciclo de motor</h1>
+  <p>Turbojet y turbofán de escape separado, calculados con las ecuaciones del apunte de On-Design (ref. Mattingly). Mueve los parámetros y mira cómo cambian el ciclo y el flujo.</p>
+  <span class="chip" id="valChip">Validando…</span>
+</header>
+
+<div class="layout">
+  <aside class="card controls" aria-label="Parámetros">
+    <h2>Casos del apunte</h2>
+    <div class="presets" id="presets"></div>
+
+    <h2>Arquitectura</h2>
+    <div class="seg" id="segArch" role="group" aria-label="Arquitectura">
+      <button type="button" data-v="turbojet" aria-pressed="false">Turbojet</button>
+      <button type="button" data-v="turbofan" aria-pressed="true">Turbofán</button>
+    </div>
+    <div class="seg" id="segSpool" style="margin-top:8px" role="group" aria-label="Ejes">
+      <button type="button" data-v="single" aria-pressed="false">1 eje</button>
+      <button type="button" data-v="two" aria-pressed="true">2 ejes</button>
+    </div>
+
+    <h2>Vuelo</h2>
+    <div id="gFlight"></div>
+    <div class="note" id="ovNote" hidden></div>
+
+    <h2>Ciclo</h2>
+    <div class="note" style="margin-top:0">Definir la temperatura de turbina por:</div>
+    <div class="seg" id="segTl" role="group" aria-label="Definir la temperatura de turbina por"><button type="button" data-v="tt4" aria-pressed="true">Tt4 (K)</button><button type="button" data-v="tl" aria-pressed="false">τλ</button></div>
+    <div id="gCycle"></div>
+
+    <h2>Toberas</h2>
+    <div class="note" style="margin-top:0">Convergente: se comprueba si está bloqueada. Convergente-divergente: se fija P₀/P₉.</div>
+    <div class="sl"><div class="row"><span>Tobera del núcleo<button type="button" class="info" data-i="kindNoz" aria-label="Más información" title="Más información">i</button></span></div>
+      <select id="kindCore"><option value="conv">Convergente</option><option value="cd">Convergente-divergente</option></select></div>
+    <div id="gNozCore"></div>
+    <div class="sl" id="wrapKindFan"><div class="row"><span>Tobera del fan<button type="button" class="info" data-i="kindNoz" aria-label="Más información" title="Más información">i</button></span></div>
+      <select id="kindFan"><option value="conv">Convergente</option><option value="cd">Convergente-divergente</option></select></div>
+    <div id="gNozFan"></div>
+
+    <h2>Componentes</h2>
+    <div class="seg" id="segTech" role="group" aria-label="Nivel tecnológico">
+      <button type="button" data-v="1" aria-pressed="false">N1</button>
+      <button type="button" data-v="2" aria-pressed="false">N2</button>
+      <button type="button" data-v="3" aria-pressed="false">N3</button>
+      <button type="button" data-v="4" aria-pressed="false">N4</button>
+    </div>
+    <div class="note">Nivel tecnológico de la Tabla 3.3 (N3: 1985–2005, N4: actual). Aplica eficiencias y pérdidas típicas.</div>
+    <details><summary>Ajuste fino de eficiencias</summary><div id="gEff"></div></details>
+    <details id="detGas"><summary>Gas y combustible</summary>
+      <div class="sl"><div class="row"><label for="fuelSel">Combustible</label></div>
+        <select id="fuelSel"><option value="">Personalizado</option><option value="42.8">Queroseno (apunte) · 42,8 MJ/kg</option><option value="43.15">Jet A-1 · 43,15 MJ/kg</option><option value="50">Metano / GNL · 50 MJ/kg</option><option value="120">Hidrógeno · 120 MJ/kg</option><option value="26.8">Etanol · 26,8 MJ/kg</option></select></div>
+      <div class="gasgrid" id="gGas"></div>
+      <button type="button" class="btn" id="btnGasReset" style="margin:8px 0 4px">Restablecer valores por defecto</button>
+      <div class="note">γ y c<sub>p</sub> son constantes en cada zona (aire frío antes de la cámara, gas caliente después). Con hidrógeno o metano habría más vapor de agua en los gases y γ<sub>t</sub> y c<sub>pt</sub> serían algo distintos: ajústalos a mano si lo necesitas.</div>
+      <div class="note" id="gasNote"></div></details>
+  </aside>
+
+  <main class="stage">
+    <section class="card viz" aria-label="Corte del motor">
+      <div class="viz-top">
+        <span class="t" id="vizTitle">Corte del motor</span>
+        <span class="ctl">
+          <button type="button" class="info" data-i="viz" aria-label="Más información" title="Más información">i</button>
+          <button type="button" class="btn" id="btnPlay">Pausar</button>
+          <button type="button" class="btn" id="btnBack" hidden>Volver al diseño</button>
+          <button type="button" class="btn" id="btnRef">Fijar referencia</button>
+          <button type="button" class="btn" id="btnClr" hidden>Quitar referencia</button>
+        </span>
+      </div>
+      <canvas id="cv" width="1000" height="380" role="img" aria-label="Corte animado del motor con partículas de flujo coloreadas por temperatura total"></canvas>
+      <div class="legend">
+        <span>Temperatura total del flujo</span><span class="bar"></span><span class="num">200 K → 2000 K</span>
+        <span>Velocidad de las partículas ∝ velocidad del gas. Giro de ejes y geometría son esquemáticos; los números del panel son los del ciclo.</span>
+      </div>
+      <div class="alerts" id="alerts"></div>
+    </section>
+
+    <section class="tiles" id="tiles" aria-label="Prestaciones"></section>
+
+    <section class="card tabs">
+      <div class="tablist" role="tablist" id="tabs"></div>
+      <div class="panel" id="panel" role="tabpanel"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+/* Motor de cálculo 1D de ciclo para turbojet y turbofán de escape separado.
+   Ecuaciones del apunte "On-Design Aircraft Engine Analysis" (ref. Mattingly):
+   §3 componentes, §4 prestaciones, §5 turbojet, §6.1 turbofán separado, §11 dimensionado. */
+const Engine = (function () {
+  const G0 = 9.80665;
+
+  function isa(h) {
+    const T0 = 288.15, P0 = 101325, L = 0.0065, R = 287.053;
+    if (h <= 11000) { const T = T0 - L * h; return { T, P: P0 * Math.pow(T / T0, G0 / (L * R)) }; }
+    const T11 = 216.65, P11 = P0 * Math.pow(T11 / T0, G0 / (L * R));
+    const h2 = Math.min(h, 20000);
+    return { T: T11, P: P11 * Math.exp(-G0 * (h2 - 11000) / (R * T11)) };
+  }
+
+  // Parámetro de flujo másico adimensional, eq. 1.22
+  function mfp(g, M) { return Math.sqrt(g) * M * Math.pow(1 + (g - 1) / 2 * M * M, -(g + 1) / (2 * (g - 1))); }
+  function machFromPtP(g, r) { return Math.sqrt(Math.max(0, 2 / (g - 1) * (Math.pow(r, (g - 1) / g) - 1))); }
+
+  // Tobera: kind 'cd' (P0/P9 dado) o 'conv' (hipótesis y comprobación de bloqueo, §3.10)
+  function nozzle(g, PtOverP0, P0overP9, kind) {
+    if (kind === 'cd') {
+      const r = P0overP9 * PtOverP0;
+      return { M: machFromPtP(g, r), P9overP0: 1 / P0overP9, PtOverP9: r, choked: false };
+    }
+    const crit = Math.pow((g + 1) / 2, g / (g - 1));
+    if (PtOverP0 >= crit) return { M: 1, P9overP0: PtOverP0 / crit, PtOverP9: crit, choked: true };
+    return { M: machFromPtP(g, PtOverP0), P9overP0: 1, PtOverP9: PtOverP0, choked: false };
+  }
+
+  function solve(inp) {
+    const o = { ok: true, warnings: [] };
+    const { gc, cpc, gt, cpt, hPR } = inp.gas;
+    const d = inp.design, c = inp.comp, n = inp.nozzle, fl = inp.flight;
+    const isFan = inp.arch === 'turbofan';
+    const alpha = isFan ? d.alpha : 0;
+    const Rc = (gc - 1) / gc * cpc, Rt = (gt - 1) / gt * cpt;
+    const T0 = fl.T0, P0 = fl.P0, M0 = fl.M0;
+    const a0 = Math.sqrt(gc * Rc * T0), v0 = a0 * M0;
+    const epsC = (gc - 1) / gc, epsT = (gt - 1) / gt;
+
+    // Flujo libre y toma
+    const tr = 1 + (gc - 1) / 2 * M0 * M0;
+    const pr = Math.pow(tr, gc / (gc - 1));
+    const etar = M0 <= 1 ? 1 : (M0 < 5 ? 1 - 0.075 * Math.pow(M0 - 1, 1.35) : 800 / (Math.pow(M0, 4) + 935));
+    const pid = c.pidmax * etar;
+
+    // Compresión
+    const two = d.spools === 'two';
+    const pif = isFan ? d.pif : 1;
+    const tf = isFan ? Math.pow(pif, epsC / c.ef) : 1;
+    let pic, tc, tlpc = 1, thpc = 1, pilpc = 1, pihpc = 1;
+    if (two) {
+      pilpc = d.pilpc; pihpc = d.pihpc;
+      tlpc = Math.pow(pilpc, epsC / c.ec); thpc = Math.pow(pihpc, epsC / c.ec);
+      pic = pif * pilpc * pihpc; tc = tf * tlpc * thpc;
+    } else {
+      pic = d.pic; tc = Math.pow(pic, epsC / c.ec);
+    }
+
+    // La cámara debe calentar: Tt4 > Tt3 (con c_pt > c_pc la eq. 3.19 podría dar f > 0 aunque Tt4 < Tt3)
+    const Tt3chk = T0 * tr * tc;
+    if (!(d.Tt4 > Tt3chk)) return { ok: false, error: 'Tt4 (' + d.Tt4.toFixed(0) + ' K) no supera la temperatura de salida del compresor Tt3 (' + Tt3chk.toFixed(0) + ' K): la cámara no puede calentar. Sube Tt4 o baja la compresión o el Mach.', warnings: [] };
+
+    // Combustor, eq. 3.19
+    const tl = cpt * d.Tt4 / (cpc * T0);
+    const f = (tl - tr * tc) / (c.etab * hPR / (cpc * T0) - tl);
+    if (!(f > 0)) { return { ok: false, error: 'Tt4 demasiado baja para esta compresión: no hay aporte de combustible (f ≤ 0).' }; }
+
+    // Turbinas: balance de potencias
+    let tth = 1, ttl = 1, tt, pith = 1, pitl = 1;
+    if (two) {
+      tth = 1 - (1 / (c.etam * (1 + f))) * (tr / tl) * tf * tlpc * (thpc - 1);
+      ttl = 1 - (1 / (c.etam * (1 + f))) * (tr / (tl * tth)) * ((1 + alpha) * (tf - 1) + tf * (tlpc - 1));
+      tt = tth * ttl;
+    } else {
+      tt = 1 - (1 / (c.etam * (1 + f))) * (tr / tl) * ((tc - 1) + alpha * (tf - 1));
+    }
+    if (!(tt > 0.2) || (two && !(tth > 0.2 && ttl > 0.2))) {
+      return { ok: false, error: 'Las turbinas no pueden mover compresor y fan con esta Tt4: sube Tt4 o baja π_c, π_f o α.' };
+    }
+    const pit = Math.pow(tt, gt / (epsT * c.et * gt)); // τ^(γ/((γ-1) e))
+    if (two) { pith = Math.pow(tth, 1 / (epsT * c.et)); pitl = Math.pow(ttl, 1 / (epsT * c.et)); }
+
+    // Temperaturas y presiones totales
+    const Tt0 = T0 * tr, Tt2 = Tt0, Tt13 = Tt2 * tf;
+    const Tt25 = two ? Tt13 * tlpc : null, Tt3 = Tt2 * tc, Tt4 = d.Tt4;
+    const Tt45 = two ? Tt4 * tth : null, Tt5 = Tt4 * tt;
+    const Pt0 = P0 * pr, Pt2 = Pt0 * pid, Pt13 = Pt2 * pif;
+    const Pt25 = two ? Pt13 * pilpc : null, Pt3 = Pt2 * pic, Pt4 = Pt3 * c.pib;
+    const Pt45 = two ? Pt4 * pith : null, Pt5 = Pt4 * pit, Pt9 = Pt5 * c.pin;
+
+    // Viabilidad de las toberas: la presión total debe superar la de descarga
+    const rc = n.kindCore === 'cd' ? n.p0p9 * Pt9 / P0 : Pt9 / P0;
+    if (!(rc > 1.0001)) return { ok: false, error: 'La presión total a la salida del núcleo (' + (Pt9 / 1000).toFixed(1) + ' kPa) no supera la de descarga: la turbina extrae demasiado para este α y esta altitud. Reduce α o π del fan, o sube Tt4 o el Mach.', warnings: [] };
+    if (isFan) {
+      const rf = n.kindFan === 'cd' ? n.p0p19 * Pt13 * c.pifn / P0 : Pt13 * c.pifn / P0;
+      if (!(rf > 1.0001)) return { ok: false, error: 'La presión total a la salida del fan no supera la de descarga: sube π del fan o el Mach de vuelo.', warnings: [] };
+    }
+
+    // Tobera del núcleo
+    const nc = nozzle(gt, Pt9 / P0, n.p0p9, n.kindCore);
+    const T9 = Tt5 / (1 + (gt - 1) / 2 * nc.M * nc.M);
+    const v9 = nc.M * Math.sqrt(gt * Rt * T9);
+    const P9 = P0 * nc.P9overP0;
+    const Fcore = (1 + f) * v9 - v0 + (1 + f) * Rt * T9 / v9 * (1 - P0 / P9); // por kg/s de núcleo
+
+    // Tobera del fan
+    let nf = null, T19 = null, v19 = 0, P19 = null, Pt19 = null, Fsec = 0;
+    if (isFan) {
+      Pt19 = Pt13 * c.pifn;
+      nf = nozzle(gc, Pt19 / P0, n.p0p19, n.kindFan);
+      T19 = Tt13 / (1 + (gc - 1) / 2 * nf.M * nf.M);
+      v19 = nf.M * Math.sqrt(gc * Rc * T19);
+      P19 = P0 * nf.P9overP0;
+      Fsec = v19 - v0 + Rc * T19 / v19 * (1 - P0 / P19); // por kg/s de bypass
+    }
+
+    // Prestaciones (por kg/s de aire total)
+    const Fsp = Fcore / (1 + alpha) + alpha / (1 + alpha) * Fsec;
+    const tsfc = f / ((1 + alpha) * Fsp);
+    const dek = 0.5 * ((1 + f) / (1 + alpha) * v9 * v9 + alpha / (1 + alpha) * v19 * v19 - v0 * v0);
+    const etaT = (1 + alpha) * dek / (f * hPR);
+    const etaP = v0 * Fsp / dek;
+    const etaO = etaT * etaP;
+    const FR = isFan ? Fcore / Fsec : null;
+
+    if (Fsp <= 0) o.warnings.push('Empuje específico ≤ 0: el motor no genera empuje con estos parámetros (TSFC y rendimientos no tienen sentido).');
+    else if (dek <= 0) o.warnings.push('Δe_k ≤ 0: la energía cinética del chorro no supera la del aire de entrada (toberas muy subexpandidas o fan lento). η_T, η_P y η_O no están definidos.');
+    if (isFan && Fsec < 0 && Fsp > 0) o.warnings.push('El fan da empuje negativo (chorro frío más lento que el vuelo): sube π del fan o baja el Mach.');
+    if (Fcore < 0 && Fsp > 0) o.warnings.push('El núcleo da empuje negativo: la turbina extrae casi toda la energía del gas (α o π del fan demasiado altos para esta Tt4).');
+    if (nc.choked) o.warnings.push('Tobera del núcleo bloqueada (M9 = 1).');
+    if (nf && nf.choked) o.warnings.push('Tobera del fan bloqueada (M19 = 1).');
+    if (etaP > 1) o.warnings.push('η_P > 100 %: toberas no adaptadas. El empuje por presión (P₉−P₀)A₉ cuenta en F pero no en ΔEk (definición del apunte).');
+    if (d.Tt4 > 2000) o.warnings.push('Tt4 por encima del límite de materiales de la Tabla 3.3 (2000 K).');
+
+    Object.assign(o, {
+      alpha, f, a0, v0, Rc, Rt, tr, pr, etar, pid, tf, tc, tl, tt, tth, ttl, pit, pith, pitl, pic, pif, pilpc, pihpc, tlpc, thpc,
+      Tt0, Tt2, Tt13, Tt25, Tt3, Tt4, Tt45, Tt5, Pt0, Pt2, Pt13, Pt25, Pt3, Pt4, Pt45, Pt5, Pt9, Pt19,
+      core: { M: nc.M, T9, v9, P9, choked: nc.choked, Pt9overP9: nc.PtOverP9 },
+      fan: isFan ? { M: nf.M, T19, v19, P19, choked: nf.choked, Pt19overP19: nf.PtOverP9 } : null,
+      Fcore, Fsec, Fsp, tsfc, etaT, etaP, etaO, FR, dek,
+      isFan, two, T0, P0, M0, inp
+    });
+
+    // Dimensionado (§11) si se da el caudal de entrada
+    if (inp.size && inp.size.mdot0 > 0) {
+      const m0 = inp.size.mdot0, mc = m0 / (1 + alpha), ms = m0 - mc;
+      const A = (m, R, Tt, Pt, g, M) => m * Math.sqrt(R * Tt) / (mfp(g, M) * Pt);
+      const M2 = inp.size.M2, M3 = 0.30, M4 = 0.25, M5 = 0.45;
+      const m9 = (1 + f) * mc;
+      o.size = {
+        m0, mc, ms, mf: f * mc, F: Fsp * m0,
+        A0: M0 > 0.01 ? A(m0, Rc, Tt0, Pt0, gc, M0) : null,
+        A2: A(m0, Rc, Tt2, Pt2, gc, M2),
+        Ain: A(mc, Rc, two && isFan ? Tt13 : Tt2, two && isFan ? Pt13 : Pt2, gc, 0.5),
+        A3: A(mc, Rc, Tt3, Pt3, gc, M3),
+        A4: A(m9, Rt, Tt4, Pt4, gt, M4),
+        A5: A(m9, Rt, Tt5, Pt5, gt, M5),
+        A9: A(m9, Rt, Tt5, Pt9, gt, nc.M),
+        A19: isFan ? A(ms, Rc, Tt13, Pt19, gc, nf.M) : null,
+        M2, M3, M4, M5
+      };
+    }
+    return o;
+  }
+
+  /* Modelo fuera de diseño simplificado (turbinas con tobera bloqueada, eficiencias constantes, α constante).
+     Con τ_t de cada turbina constante, el balance de potencias fija cuánto comprime cada compresor para una
+     Tt4 y un M0 dados, y el caudal sale de la condición de bloqueo de la turbina de alta: ṁ4·√Tt4/Pt4 = cte.
+     Es una aproximación de curso (no usa mapas de compresor). */
+  function makeOffDesign(dInp) {
+    const D = solve(Object.assign({}, dInp, { size: { mdot0: 1, M2: 0.5 } }));
+    if (!D.ok) return { ok: false, error: D.error };
+    const full = solve(dInp);
+    const two = D.two, isFan = D.isFan, alpha = D.alpha;
+    const c = dInp.comp, gas = dInp.gas, epsC = (gas.gc - 1) / gas.gc;
+    const mcD = full.size.mc;
+    const K = (1 + D.f) * mcD * Math.sqrt(D.Tt4) / D.Pt4;
+    const kap = two ? (isFan ? (D.tlpc - 1) / (D.tf - 1) : 0) : (isFan ? (D.tf - 1) / (D.tc - 1) : 0);
+
+    function at(T0, P0, M0, Tt4, full) {
+      const tr = 1 + (gas.gc - 1) / 2 * M0 * M0;
+      const tl = gas.cpt * Tt4 / (gas.cpc * T0);
+      const hk = c.etab * gas.hPR / (gas.cpc * T0);
+      let f = D.f, tf = 1, tc = 1, tlpc = 1, thpc = 1;
+      for (let it = 0; it < 6; it++) {
+        const base = c.etam * (1 + f) * tl / tr;
+        if (two) {
+          const RA = (1 - D.tth) * base, RB = (1 - D.ttl) * base * D.tth;
+          if (isFan) {
+            const b = 1 + alpha + kap, disc = b * b + 4 * kap * RB;
+            const u = (-b + Math.sqrt(disc)) / (2 * kap);
+            tf = 1 + u; tlpc = 1 + kap * u;
+          } else { tlpc = 1 + RB; tf = 1; }
+          thpc = 1 + RA / (tf * tlpc);
+          tc = tf * tlpc * thpc;
+        } else {
+          const RS = (1 - D.tt) * base;
+          tc = 1 + RS / (1 + alpha * kap);
+          tf = isFan ? 1 + kap * (tc - 1) : 1;
+        }
+        f = (tl - tr * tc) / (hk - tl);
+        if (!(f > 0)) return { ok: false, error: 'Tt4 demasiado baja: sin aporte de combustible.' };
+      }
+      const pi = (t, e) => Math.pow(t, e / epsC);
+      const des = Object.assign({}, dInp.design, { Tt4 });
+      if (two) { des.pif = isFan ? pi(tf, c.ef) : 1; des.pilpc = pi(tlpc, c.ec); des.pihpc = pi(thpc, c.ec); }
+      else { des.pic = pi(tc, c.ec); des.pif = isFan ? pi(tf, c.ef) : 1; }
+      const nz = Object.assign({}, dInp.nozzle);
+      if (nz.kindCore === 'cd') nz.p0p9 = 1;
+      if (nz.kindFan === 'cd') nz.p0p19 = 1;
+      const r = solve(Object.assign({}, dInp, { flight: { T0, P0, M0 }, design: des, nozzle: nz, size: { mdot0: 1, M2: 0.5 } }));
+      if (!r.ok) return r;
+      const mdotc = K * r.Pt4 / Math.sqrt(Tt4) / (1 + r.f), mdot0 = (1 + alpha) * mdotc;
+      r.mdot0 = mdot0; r.mdotc = mdotc; r.mdotf = r.f * mdotc; r.F = r.Fsp * mdot0;
+      r.offDesign = true;
+      if (full) {
+        const r2 = solve(Object.assign({}, dInp, { flight: { T0, P0, M0 }, design: des, nozzle: nz, size: { mdot0, M2: 0.5 } }));
+        Object.assign(r2, { mdot0, mdotc, mdotf: r.mdotf, F: r.F, offDesign: true });
+        return r2;
+      }
+      return r;
+    }
+    return { ok: true, design: full, at, K };
+  }
+
+  return { solve, isa, mfp, nozzle, makeOffDesign };
+})();
+if (typeof module !== 'undefined') module.exports = Engine;
+
+</script>
+<script>
+/* Simulación de misión (perfil vertical) con el motor fuera de diseño.
+   Modelo de avión: polar parabólica con resistencia de onda; ISA; sin viento.
+   El motor viene de Engine.makeOffDesign (turbinas bloqueadas, α constante, sin mapas de compresor). */
+const Mission = (function () {
+  const g0 = 9.80665, Rg = 287.053;
+  const atm = h => { const a = Engine.isa(h); return { T: a.T, P: a.P, rho: a.P / (Rg * a.T), a: Math.sqrt(1.4 * Rg * a.T) }; };
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  function machFromCAS(cas, h) {
+    const P = atm(h).P, qc = 101325 * (Math.pow(1 + 0.2 * Math.pow(cas / 340.294, 2), 3.5) - 1);
+    return Math.sqrt(5 * (Math.pow(qc / P + 1, 2 / 7) - 1));
+  }
+  // Programa de velocidad: CAS limitada a 250 kt por debajo de 10 000 ft y Mach máximo
+  function speedM(h, s) {
+    const cas = h < 3048 ? Math.min(s.cas, 128.6) : s.cas;
+    return Math.min(machFromCAS(cas, h), s.mach);
+  }
+  function aero(ac, W, h, M, cosg) {
+    const a = atm(h), V = M * a.a, q = 0.5 * a.rho * V * V;
+    const CL = W * g0 * (cosg == null ? 1 : cosg) / (q * ac.S);
+    const CDw = 20 * Math.pow(Math.max(0, M - ac.Mcrit), 4);
+    const CD = ac.CD0 + ac.k * CL * CL + CDw;
+    return { V, q, CL, CD, D: q * ac.S * CD, a };
+  }
+
+  /* Controlador del motor: empuje requerido por motor -> Tt4, empuje, consumo */
+  function makeEngine(od, eng) {
+    const at = (h, M, T) => { const a = atm(h); return od.at(a.T, a.P, M, T); };
+    function maxThrust(h, M, Tt4) {
+      const r = at(h, M, Tt4);
+      return r.ok ? { F: r.F, mf: r.mdotf, Tt4, res: r } : { F: 0, mf: 0, Tt4, res: null, fail: true };
+    }
+    function forThrust(h, M, Treq, Tt4max) {
+      const rHi = at(h, M, Tt4max);
+      if (!rHi.ok) return { F: 0, mf: 0, Tt4: Tt4max, flag: 'fail', res: null };
+      if (Treq >= rHi.F) return { F: rHi.F, mf: rHi.mdotf, Tt4: Tt4max, flag: 'max', res: rHi };
+      const lo0 = 650;
+      let Tb = lo0, rb = at(h, M, lo0);
+      if (!rb.ok) {
+        let l = lo0, u = Tt4max;
+        for (let i = 0; i < 14; i++) { const m = (l + u) / 2; if (at(h, M, m).ok) u = m; else l = m; }
+        Tb = u; rb = at(h, M, Tb);
+      }
+      if (Treq <= rb.F) {
+        const Fi = Math.min(rb.F, Math.max(Treq, eng.idleFrac * rHi.F));
+        return { F: Fi, mf: rb.mdotf * Math.pow(Fi / rb.F, 0.7), Tt4: Tb, flag: 'idle', res: rb };
+      }
+      let l = Tb, u = Tt4max, r = rb;
+      for (let i = 0; i < 16; i++) {
+        const m = (l + u) / 2; r = at(h, M, m);
+        if (r.F < Treq) l = m; else u = m;
+      }
+      r = at(h, M, (l + u) / 2);
+      return { F: r.F, mf: r.mdotf, Tt4: (l + u) / 2, flag: '', res: r };
+    }
+    return { maxThrust, forThrust, at };
+  }
+
+  function simulate(cfg) {
+    const { od, ac, eng, ms } = cfg;
+    const E = makeEngine(od, eng), nE = ac.nEng;
+    const warnings = [];
+    const warn = w => { if (!warnings.includes(w)) warnings.push(w); };
+    const pts = [];
+    const st = { t: 0, x: 0, h: ms.h0, W: ac.m0, fuel: 0 };
+
+    function rec(phase, M, ae, e, gam, extra) {
+      const a = ae.a;
+      pts.push(Object.assign({
+        phase, t: st.t, x: st.x / 1000, h: st.h, M, V: ae.V, W: st.W, CL: ae.CL, CD: ae.CD,
+        D: ae.D, T: nE * e.F, Tt4: e.Tt4, mf: nE * e.mf, flag: e.flag || '', gam: gam * 180 / Math.PI,
+        fuel: st.fuel, tsfc: e.F > 0 ? e.mf / e.F : 0
+      }, extra || {}));
+    }
+    function advance(dt, V, sg, mf) {
+      const cg = Math.sqrt(1 - sg * sg);
+      st.t += dt; st.x += V * cg * dt; st.h += V * sg * dt; st.W -= mf * dt; st.fuel += mf * dt;
+    }
+    const dVdh = (h, s) => {
+      const hl = Math.max(0, h - 50), hu = h + 50;
+      return (speedM(hu, s) * atm(hu).a - speedM(hl, s) * atm(hl).a) / (hu - hl);
+    };
+
+    /* ----- ascenso a potencia máxima o con límite de régimen de ascenso ----- */
+    function climb(hTop, s) {
+      let guard = 0;
+      while (st.h < hTop - 1 && guard++ < 3000) {
+        const h = st.h, M = speedM(h, s), a = atm(h), V = M * a.a, dv = dVdh(h, s);
+        const Fm = E.maxThrust(h, M, eng.Tt4climb);
+        if (Fm.fail) { warn('El motor no tiene solución a esa altitud y velocidad en ascenso.'); return false; }
+        const Tmax = nE * Fm.F, share = 1 + V * dv / g0;
+        let sg = 0, ae = aero(ac, st.W, h, M, 1);
+        for (let k = 0; k < 3; k++) { ae = aero(ac, st.W, h, M, Math.sqrt(1 - sg * sg)); sg = clamp((Tmax - ae.D) / (st.W * g0 * share), -0.3, 0.4); }
+        if (sg < 0.002) { warn('Techo de ascenso: con la potencia máxima el avión no puede seguir subiendo.'); return false; }
+        let e = { F: Fm.F, mf: Fm.mf, Tt4: eng.Tt4climb, flag: 'max' };
+        const sgCap = ms.rocMax / V;
+        if (sg > sgCap) {
+          sg = sgCap; ae = aero(ac, st.W, h, M, Math.sqrt(1 - sg * sg));
+          const Treq = (ae.D + st.W * g0 * sg * share) / nE;
+          e = E.forThrust(h, M, Treq, eng.Tt4climb);
+        }
+        const dt = clamp((hTop - h) / (V * sg), 1, 15);
+        rec('ascenso', M, ae, e, Math.asin(sg));
+        advance(dt, V, sg, nE * e.mf);
+      }
+      return true;
+    }
+
+    /* ----- optimización del crucero (máximo alcance específico) ----- */
+    function cruiseOpt(W, fixedM) {
+      let best = null;
+      const Ms = fixedM ? [fixedM] : []; if (!fixedM) for (let M = 0.62; M <= ms.Mmax + 1e-6; M += 0.02) Ms.push(M);
+      for (const M of Ms) for (let h = ms.hMin; h <= ms.hMax + 1; h += 250) {
+        const ae = aero(ac, W, h, M, 1), Fm = E.maxThrust(h, M, eng.Tt4cruise);
+        if (Fm.fail || ae.D / nE > Fm.F) continue;
+        // techo de servicio: con empuje de ascenso y el avión más pesado debe sobrar régimen de ascenso
+        const Wc = W * 1.06, aeC = aero(ac, Wc, h, M, 1), Fc = E.maxThrust(h, M, eng.Tt4climb);
+        if (Fc.fail || (nE * Fc.F - aeC.D) * aeC.V / (Wc * g0) < ms.rocMin) continue;
+        const e = E.forThrust(h, M, ae.D / nE, eng.Tt4cruise);
+        if (e.flag === 'fail' || e.flag === 'idle') continue;
+        const sr = ae.V / (nE * e.mf);
+        if (!best || sr > best.sr) best = { M, h, sr, Tt4: e.Tt4 };
+      }
+      return best;
+    }
+
+    /* ----- crucero hasta xEnd (m); con climbMode sigue la altitud óptima (cruise-climb) ----- */
+    function cruise(M, xEnd, climbMode, trail) {
+      let guard = 0;
+      while (st.x < xEnd && guard++ < 5000) {
+        const h = st.h;
+        let rate = 0;
+        if (climbMode) {
+          if (guard % 5 === 1) { const o = cruiseOpt(st.W, M); if (o) trail.hOpt = Math.max(trail.hOpt || h, o.h); }
+          if (trail.hOpt && trail.hOpt > h + 2) rate = Math.min(2.5, (trail.hOpt - h) / 120);
+        }
+        const a = atm(h), V = M * a.a;
+        let sg = rate / V, ae = aero(ac, st.W, h, M, Math.sqrt(1 - sg * sg));
+        let e = E.forThrust(h, M, (ae.D + st.W * g0 * sg) / nE, eng.Tt4cruise);
+        if (e.flag === 'max' && sg > 0) { sg = 0; ae = aero(ac, st.W, h, M, 1); e = E.forThrust(h, M, ae.D / nE, eng.Tt4cruise); }
+        if (e.flag === 'fail') { warn('El motor no tiene solución en crucero.'); return false; }
+        if (e.flag === 'max') warn('Crucero limitado por empuje: la resistencia supera el empuje disponible con Tt4 máx. de crucero.');
+        const dt = clamp((xEnd - st.x) / V, 1, 60);
+        rec('crucero', M, ae, e, Math.asin(sg));
+        advance(dt, V, sg, nE * e.mf);
+      }
+      return true;
+    }
+
+    /* ----- descenso a ralentí ----- */
+    function descent(hEnd, s) {
+      let guard = 0;
+      while (st.h > hEnd + 1 && guard++ < 4000) {
+        const h = st.h, M = speedM(h, s), a = atm(h), V = M * a.a, dv = dVdh(h, s);
+        const share = 1 + V * dv / g0;
+        let sg = -0.05, ae = aero(ac, st.W, h, M, 1), e;
+        e = E.forThrust(h, M, 0, eng.Tt4cruise);
+        if (e.flag === 'fail') { warn('El motor no tiene solución en descenso.'); return false; }
+        for (let k = 0; k < 3; k++) { ae = aero(ac, st.W, h, M, Math.sqrt(1 - sg * sg)); sg = clamp((nE * e.F - ae.D) / (st.W * g0 * share), -0.3, -0.01); }
+        const dt = clamp((h - hEnd) / (V * -sg), 1, 15);
+        rec('descenso', M, ae, e, Math.asin(sg));
+        advance(dt, V, sg, nE * e.mf);
+      }
+      return true;
+    }
+
+    /* ======================== modo automático ======================== */
+    function runAuto() {
+      const tgt = ms.range * 1000;
+      let Wmid = 0.92 * ac.m0, opt = null, res = null;
+      for (let it = 0; it < 3; it++) {
+        opt = cruiseOpt(Wmid, ms.Mfix || 0);
+        if (!opt) { warn('No hay ninguna combinación de altitud y Mach con la que el avión pueda cruzar con este motor. Revisa masa, Tt4 máx. de crucero o la resistencia.'); return null; }
+        res = runFrom(opt, tgt);
+        const cr = res.pts.filter(p => p.phase === 'crucero');
+        if (!cr.length) break;
+        const Wm = cr.reduce((a, p) => a + p.W, 0) / cr.length;
+        if (Math.abs(Wm - Wmid) / Wmid < 0.01) break;
+        Wmid = Wm;
+      }
+      res.opt = opt;
+      return res;
+    }
+    function runFrom(opt, tgt) {
+      pts.length = 0; Object.assign(st, { t: 0, x: 0, h: ms.h0, W: ac.m0, fuel: 0 });
+      warnings.length = 0;
+      const climbSched = { cas: ms.casClimb, mach: opt.M };
+      const descSched = { cas: ms.casDesc, mach: opt.M };
+      const hTop = ms.cruiseClimb ? ((cruiseOpt(0.97 * ac.m0, opt.M) || opt).h) : opt.h;
+      climb(hTop, climbSched);
+      const iClimb = pts.length;
+      const xToc = st.x;
+      let trail = {}, dDesc = Math.max(40e3, (opt.h - ms.hEnd) * 20);
+      const stClimb = Object.assign({}, st);
+      cruise(opt.M, tgt - 10e3, ms.cruiseClimb, trail);
+      const iCruiseEnd = pts.length, stCruise = Object.assign({}, st);
+      const cruisePts = pts.slice(iClimb);
+      let out = null;
+      for (let it = 0; it < 5; it++) {
+        // restaurar el estado de crucero en x = tgt - dDesc
+        pts.length = iClimb; for (const p of cruisePts) { if (p.x * 1000 <= tgt - dDesc) pts.push(p); else break; }
+        const last = pts[pts.length - 1] || null;
+        if (last) Object.assign(st, { t: last.t, x: last.x * 1000, h: last.h, W: last.W, fuel: last.fuel });
+        else Object.assign(st, stClimb);
+        const xTod = st.x, hTod = st.h, nPre = pts.length;
+        descent(ms.hEnd, descSched);
+        const dNew = st.x - xTod;
+        out = { xTod, hTod, dDesc: dNew, nPre };
+        if (Math.abs(dNew - dDesc) < 2e3) break;
+        dDesc = dNew;
+      }
+      return { pts: pts.slice(), opt, xToc, tod: out, st: Object.assign({}, st), warnings: warnings.slice() };
+    }
+
+    /* ======================== modo manual ======================== */
+    function runManual() {
+      const wp = ms.waypoints.slice().sort((a, b) => a.x - b.x);
+      if (wp.length < 2) { warn('Hacen falta al menos 2 puntos de ruta.'); return null; }
+      Object.assign(st, { t: 0, x: wp[0].x * 1000, h: wp[0].h, W: ac.m0, fuel: 0 });
+      const lim = [];
+      for (let i = 0; i < wp.length - 1; i++) {
+        const A = wp[i], B = wp[i + 1], L = (B.x - A.x) * 1000;
+        if (L <= 0) continue;
+        const dx = Math.max(500, Math.min(10000, L / 20)), n = Math.max(1, Math.round(L / dx));
+        for (let k = 0; k < n; k++) {
+          const u0 = k / n, u1 = (k + 1) / n;
+          const h = A.h + (B.h - A.h) * u0, h1 = A.h + (B.h - A.h) * u1;
+          const M = A.M + (B.M - A.M) * u0, M1 = A.M + (B.M - A.M) * u1;
+          const ds = L / n, gam = Math.atan2(h1 - h, ds), sg = Math.sin(gam);
+          const a = atm(h), a1 = atm(h1), V = M * a.a, V1 = M1 * a1.a;
+          const dt = ds / Math.max(30, 0.5 * (V + V1));
+          const ae = aero(ac, st.W, h, M, Math.cos(gam));
+          const Treq = (ae.D + st.W * g0 * sg + st.W * (V1 - V) / dt) / nE;
+          const Tmax = ms.manualRating === 'cruise' ? eng.Tt4cruise : eng.Tt4climb;
+          const e = E.forThrust(h, M, Math.max(0, Treq), Tmax);
+          if (e.flag === 'fail') { warn('El motor no tiene solución en el tramo ' + (i + 1) + '.'); return null; }
+          if (e.flag === 'max' && Treq > e.F * 1.001) lim.push(i + 1);
+          if (e.flag === 'idle' && Treq < 0) warn('Tramo ' + (i + 1) + ': el descenso pedido es más empinado que el de ralentí; haría falta resistencia extra (aerofrenos).');
+          st.h = h;
+          rec('manual', M, ae, e, gam, { seg: i + 1, short: e.flag === 'max' && Treq > e.F * 1.001 });
+          advance(dt, 0.5 * (V + V1), sg, nE * e.mf);
+          st.h = h1;
+        }
+      }
+      for (const s of new Set(lim)) warn('Tramo ' + s + ': el perfil pedido exige más empuje del que da el motor con Tt4 máx. (el avión no lo podría volar).');
+      return { pts: pts.slice(), st: Object.assign({}, st), warnings: warnings.slice() };
+    }
+
+    if (!(ac.m0 > 0)) return { ok: false, warnings: ['Masa inicial no válida (≤ 0). Si usas la masa automática, este motor no da empuje ni para la resistencia parásita del avión en el punto de diseño: sube ṁ₀ o Tt4, añade motores o reduce S o C_D0.'] };
+    const out = ms.mode === 'manual' ? runManual() : runAuto();
+    if (!out) return { ok: false, warnings };
+    const p = out.pts, last = out.st;
+    if (p.length < 2) return { ok: false, warnings: warnings.length ? warnings.concat(['No se ha podido calcular ningún tramo: el motor, tal como está diseñado, no funciona en las condiciones del inicio del vuelo (altitud y Mach bajos). Suele pasar con α alto y π del fan bajo; prueba otro punto de diseño.']) : ['No se ha podido calcular ningún tramo del vuelo.'] };
+    if (last.W < 0.3 * ac.m0) return { ok: false, warnings: ['El vuelo necesitaría quemar ' + (100 * last.fuel / ac.m0).toFixed(0) + ' % de la masa inicial en combustible: imposible para un avión real (el máximo práctico ronda el 40–45 %). Reduce el alcance o la resistencia, o mejora el motor.'] };
+    if (last.fuel > 0.45 * ac.m0) warnings.push('El combustible es el ' + (100 * last.fuel / ac.m0).toFixed(0) + ' % de la masa inicial: más de lo que cabe en un avión real (≈ 40–45 % como máximo).');
+    out.ok = true; out.warnings = warnings.slice();
+    out.sum = {
+      fuel: last.fuel, time: last.t, dist: last.x / 1000, mEnd: last.W,
+      climb: segSum(p, 'ascenso'), cruise: segSum(p, 'crucero'), descent: segSum(p, 'descenso'),
+      maxF: Math.max(...p.map(q => q.T))
+    };
+    return out;
+  }
+  function segSum(p, ph) {
+    const a = p.filter(q => q.phase === ph);
+    if (!a.length) return null;
+    const f0 = a[0].fuel, t0 = a[0].t, x0 = a[0].x, l = a[a.length - 1];
+    const nxt = p[p.indexOf(l) + 1];
+    return { fuel: (nxt ? nxt.fuel : l.fuel) - f0, time: (nxt ? nxt.t : l.t) - t0, dist: (nxt ? nxt.x : l.x) - x0 };
+  }
+
+  /* Masa con la que el motor sostiene el vuelo nivelado a Tt4 de diseño en el punto de diseño */
+  function autoMass(od, ac, h, M) {
+    const d = od.design, Fper = d.size.F, a = atm(h), V = M * a.a, q = 0.5 * a.rho * V * V;
+    const D = ac.nEng * Fper, CD0w = ac.CD0 + 20 * Math.pow(Math.max(0, M - ac.Mcrit), 4);
+    const x = (D - q * ac.S * CD0w) * q * ac.S / ac.k;
+    return x > 0 ? Math.sqrt(x) / g0 / 0.92 : 0;
+  }
+
+  return { simulate, autoMass, atm, aero, speedM, machFromCAS };
+})();
+if (typeof module !== 'undefined') module.exports = Mission;
+
+</script>
+<script>
+/* Memoria de cálculo: reconstruye, paso a paso, todo lo que hace Engine.solve.
+   Cada paso lleva su fórmula, la sustitución numérica y el resultado. El resultado se
+   RECALCULA aquí a partir de los operandos que se muestran (no se copia del solver) y se
+   compara con el solver (campo `chk`): si algún paso no coincide, la hoja lo señala.
+
+   Marcado de las fórmulas: _{x} subíndice, ^{x} superíndice, $clave$ = valor numérico. */
+const Calcs = (function () {
+  function num(x) {
+    if (x === null || x === undefined || !isFinite(x)) return '–';
+    if (x === 0) return '0';
+    const a = Math.abs(x);
+    if (a >= 1e6) {
+      const e = Math.floor(Math.log10(a)), m = Number((x / Math.pow(10, e)).toPrecision(5));
+      return String(m).replace('.', ',') + '·10^{' + e + '}';
+    }
+    const sig = Math.max(5, Math.floor(Math.log10(a)) + 1);
+    return String(Number(x.toPrecision(sig))).replace('.', ',');
+  }
+  function html(s) {
+    let o = '';
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      if ((ch === '_' || ch === '^') && s[i + 1] === '{') {
+        let dep = 1, j = i + 2;
+        while (j < s.length && dep) { if (s[j] === '{') dep++; else if (s[j] === '}') dep--; j++; }
+        const inner = html(s.slice(i + 2, j - 1));
+        o += ch === '_' ? '<sub>' + inner + '</sub>' : '<sup>' + inner + '</sup>';
+        i = j - 1;
+      } else o += ch;
+    }
+    return o;
+  }
+  function text(s) {
+    let o = '';
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      if ((ch === '_' || ch === '^') && s[i + 1] === '{') {
+        let dep = 1, j = i + 2;
+        while (j < s.length && dep) { if (s[j] === '{') dep++; else if (s[j] === '}') dep--; j++; }
+        const raw = s.slice(i + 2, j - 1), inner = text(raw);
+        if (ch === '_') o += '_' + inner;
+        else o += raw === '2' ? '²' : raw === '3' ? '³' : raw === '4' ? '⁴' : '^(' + inner + ')';
+        i = j - 1;
+      } else o += ch;
+    }
+    return o;
+  }
+  const mfp = (g, M) => Math.sqrt(g) * M * Math.pow(1 + (g - 1) / 2 * M * M, -(g + 1) / (2 * (g - 1)));
+  const machFromPtP = (g, r) => Math.sqrt(Math.max(0, 2 / (g - 1) * (Math.pow(r, (g - 1) / g) - 1)));
+
+  function build(R) {
+    const I = R.inp, g = I.gas, d = I.design, c = I.comp, nz = I.nozzle, fl = I.flight;
+    const isFan = R.isFan, two = R.two;
+    const V = {}, secs = [];
+    let cur = null, nchk = 0, nok = 0, worst = 0;
+    const neg = x => x < 0 ? '(−' + num(-x) + ')' : num(x);
+    const fill = s => s.replace(/\$(\w+)\$/g, (m, k) => { if (!(k in V)) throw new Error('Calcs: falta ' + k); return neg(V[k]); });
+    const sec = (id, title, intro) => { cur = { id, title, intro: intro || '', steps: [] }; secs.push(cur); };
+    const data = (k, name, sym, val, unit, disp) => {
+      V[k] = val;
+      cur.steps.push({ k, name, sym, val, unit: unit || '', data: true, shown: disp !== undefined ? disp : num(val) });
+    };
+    /* Paso calculado: name, fórmula, sustitución, valor recalculado, unidad, valor del solver */
+    const st = (k, name, sym, sub, val, unit, chk, o) => {
+      o = o || {};
+      const sc = o.scale || 1;
+      const s = { k, name, sym, sub: sub ? fill(sub) : '', val, shown: num(val * sc), unit: unit || '', chk, i: o.i, note: o.note, alt: o.alt };
+      V[k] = val;
+      if (chk !== undefined && chk !== null) {
+        nchk++;
+        s.err = Math.abs(val - chk) / Math.max(Math.abs(chk), 1e-12);
+        if (s.err < 1e-9) nok++;
+        worst = Math.max(worst, s.err);
+      }
+      cur.steps.push(s);
+      return s;
+    };
+    const kpa = o => Object.assign({ alt: null }, o);
+    const pst = (k, name, sym, sub, val, chk, o) => st(k, name, sym, sub, val, 'Pa', chk, Object.assign({ alt: num(val / 1000) + ' kPa' }, o || {}));
+
+    /* ---------- 0. Datos ---------- */
+    sec('in', 'Datos de entrada', 'Valores con los que se calcula todo lo demás (los que fija el panel izquierdo, más la atmósfera ISA a la altitud elegida).');
+    data('T0', 'Temperatura ambiente', 'T_{0}', fl.T0, 'K');
+    data('P0', 'Presión ambiente', 'P_{0}', fl.P0, 'Pa');
+    data('M0', 'Mach de vuelo', 'M_{0}', fl.M0, '');
+    data('gc', 'Relación de calores específicos, aire frío', 'γ_{c}', g.gc, '');
+    data('cpc', 'Calor específico, aire frío', 'c_{pc}', g.cpc, 'J/(kg·K)');
+    data('gt', 'Relación de calores específicos, gas caliente', 'γ_{t}', g.gt, '');
+    data('cpt', 'Calor específico, gas caliente', 'c_{pt}', g.cpt, 'J/(kg·K)');
+    data('hPR', 'Poder calorífico del combustible', 'h_{PR}', g.hPR, 'J/kg', num(g.hPR / 1e6) + ' MJ/kg');
+    data('Tt4', 'Temperatura total a la entrada de la turbina', 'T_{t4}', d.Tt4, 'K');
+    if (isFan) data('alpha', 'Relación de derivación', 'α', d.alpha, '');
+    V.alpha = isFan ? d.alpha : 0;
+    if (isFan) data('pif', 'Relación de presiones del fan', 'π_{f}', d.pif, ''); else V.pif = 1;
+    if (two) {
+      data('pilpc', 'Relación de presiones del compresor de baja', 'π_{LPC}', d.pilpc, '');
+      data('pihpc', 'Relación de presiones del compresor de alta', 'π_{HPC}', d.pihpc, '');
+    } else data('pic', 'Relación de presiones del compresor (2→3)', 'π_{c}', d.pic, '');
+    data('pidmax', 'Recuperación máxima de la toma', 'π_{d máx}', c.pidmax, '');
+    data('pib', 'Recuperación de presión de la cámara', 'π_{b}', c.pib, '');
+    data('pin', 'Recuperación de presión de la tobera del núcleo', 'π_{n}', c.pin, '');
+    if (isFan) data('pifn', 'Recuperación de presión de la tobera del fan', 'π_{fn}', c.pifn, '');
+    data('ec', 'Eficiencia politrópica de los compresores', 'e_{c}', c.ec, '');
+    if (isFan) data('ef', 'Eficiencia politrópica del fan', 'e_{f}', c.ef, '');
+    data('et', 'Eficiencia politrópica de las turbinas', 'e_{t}', c.et, '');
+    data('etab', 'Rendimiento de la cámara de combustión', 'η_{b}', c.etab, '');
+    data('etam', 'Rendimiento mecánico', 'η_{m}', c.etam, '');
+    const coreCD = nz.kindCore === 'cd', fanCD = isFan && nz.kindFan === 'cd';
+    data('p0p9', coreCD ? 'Adaptación de la tobera del núcleo (P₀/P₉)' : 'Tobera del núcleo convergente', 'P_{0}/P_{9}', coreCD ? nz.p0p9 : 1, '', coreCD ? undefined : 'convergente: P₉ se calcula');
+    if (isFan) data('p0p19', fanCD ? 'Adaptación de la tobera del fan (P₀/P₁₉)' : 'Tobera del fan convergente', 'P_{0}/P_{19}', fanCD ? nz.p0p19 : 1, '', fanCD ? undefined : 'convergente: P₁₉ se calcula');
+    if (R.size) data('m0', 'Caudal de aire de entrada', 'ṁ_{0}', R.size.m0, 'kg/s');
+
+    /* ---------- 1. Flujo libre y toma ---------- */
+    sec('fl', 'Flujo libre y toma de aire (estaciones 0 y 2)', 'Condiciones de remanso del aire que llega al motor y pérdida de la toma.');
+    st('Rc', 'Constante del gas, aire frío', 'R_{c} = (γ_{c}−1)/γ_{c}·c_{pc}', '($gc$−1)/$gc$·$cpc$', (V.gc - 1) / V.gc * V.cpc, 'J/(kg·K)', R.Rc);
+    st('Rt', 'Constante del gas, gas caliente', 'R_{t} = (γ_{t}−1)/γ_{t}·c_{pt}', '($gt$−1)/$gt$·$cpt$', (V.gt - 1) / V.gt * V.cpt, 'J/(kg·K)', R.Rt);
+    st('a0', 'Velocidad del sonido', 'a_{0} = √(γ_{c}·R_{c}·T_{0})', '√($gc$·$Rc$·$T0$)', Math.sqrt(V.gc * V.Rc * V.T0), 'm/s', R.a0);
+    st('v0', 'Velocidad de vuelo', 'v_{0} = M_{0}·a_{0}', '$M0$·$a0$', V.M0 * V.a0, 'm/s', R.v0);
+    st('tr', 'Relación de temperaturas de remanso', 'τ_{r} = 1 + (γ_{c}−1)/2·M_{0}^{2}', '1 + ($gc$−1)/2·$M0$^{2}', 1 + (V.gc - 1) / 2 * V.M0 * V.M0, '', R.tr);
+    st('pr', 'Relación de presiones de remanso', 'π_{r} = τ_{r}^{γ_{c}/(γ_{c}−1)}', '$tr$^{$gc$/($gc$−1)}', Math.pow(V.tr, V.gc / (V.gc - 1)), '', R.pr);
+    const M0 = V.M0;
+    const etar = M0 <= 1 ? 1 : (M0 < 5 ? 1 - 0.075 * Math.pow(M0 - 1, 1.35) : 800 / (Math.pow(M0, 4) + 935));
+    st('etar', 'Recuperación por ondas de choque en la toma', M0 <= 1 ? 'η_{r} = 1  (M_{0} ≤ 1)' : (M0 < 5 ? 'η_{r} = 1 − 0,075·(M_{0}−1)^{1,35}  (1 < M_{0} < 5)' : 'η_{r} = 800/(M_{0}^{4} + 935)  (M_{0} ≥ 5)'),
+      M0 <= 1 ? '' : (M0 < 5 ? '1 − 0,075·($M0$−1)^{1,35}' : '800/($M0$^{4} + 935)'), etar, '', R.etar);
+    st('pid', 'Recuperación de presión de la toma', 'π_{d} = π_{d máx}·η_{r}', '$pidmax$·$etar$', V.pidmax * V.etar, '', R.pid, { i: 'cm_d' });
+    st('Tt0', 'Temperatura total, estación 0', 'T_{t0} = T_{0}·τ_{r}', '$T0$·$tr$', V.T0 * V.tr, 'K', R.Tt0);
+    pst('Pt0', 'Presión total, estación 0', 'P_{t0} = P_{0}·π_{r}', '$P0$·$pr$', V.P0 * V.pr, R.Pt0);
+    st('Tt2', 'Temperatura total, estación 2 (toma adiabática)', 'T_{t2} = T_{t0}', '$Tt0$', V.Tt0, 'K', R.Tt2);
+    pst('Pt2', 'Presión total, estación 2', 'P_{t2} = P_{t0}·π_{d}', '$Pt0$·$pid$', V.Pt0 * V.pid, R.Pt2);
+
+    /* ---------- 2. Compresión ---------- */
+    sec('co', 'Compresión', 'Cada compresor se describe con su relación de presiones y su eficiencia politrópica: τ = π^((γ−1)/(γ·e)).');
+    const epsC = (V.gc - 1) / V.gc;
+    if (isFan) {
+      st('tf', 'Relación de temperaturas del fan', 'τ_{f} = π_{f}^{(γ_{c}−1)/(γ_{c}·e_{f})}', '$pif$^{($gc$−1)/($gc$·$ef$)}', Math.pow(V.pif, epsC / V.ef), '', R.tf, { i: 'cm_f' });
+    } else V.tf = 1;
+    if (two) {
+      st('tlpc', 'Relación de temperaturas del compresor de baja', 'τ_{LPC} = π_{LPC}^{(γ_{c}−1)/(γ_{c}·e_{c})}', '$pilpc$^{($gc$−1)/($gc$·$ec$)}', Math.pow(V.pilpc, epsC / V.ec), '', R.tlpc, { i: 'cm_lpc' });
+      st('thpc', 'Relación de temperaturas del compresor de alta', 'τ_{HPC} = π_{HPC}^{(γ_{c}−1)/(γ_{c}·e_{c})}', '$pihpc$^{($gc$−1)/($gc$·$ec$)}', Math.pow(V.pihpc, epsC / V.ec), '', R.thpc, { i: 'cm_hpc' });
+      st('pic', 'Relación de presiones total (2→3)', isFan ? 'π_{c} = π_{f}·π_{LPC}·π_{HPC}' : 'π_{c} = π_{LPC}·π_{HPC}', isFan ? '$pif$·$pilpc$·$pihpc$' : '$pilpc$·$pihpc$', V.pif * V.pilpc * V.pihpc, '', R.pic, { i: 'cm_tc' });
+      st('tc', 'Relación de temperaturas total (2→3)', isFan ? 'τ_{c} = τ_{f}·τ_{LPC}·τ_{HPC}' : 'τ_{c} = τ_{LPC}·τ_{HPC}', isFan ? '$tf$·$tlpc$·$thpc$' : '$tlpc$·$thpc$', V.tf * V.tlpc * V.thpc, '', R.tc, { i: 'cm_tc' });
+    } else {
+      st('tc', 'Relación de temperaturas del compresor', 'τ_{c} = π_{c}^{(γ_{c}−1)/(γ_{c}·e_{c})}', '$pic$^{($gc$−1)/($gc$·$ec$)}', Math.pow(V.pic, epsC / V.ec), '', R.tc, { i: 'cm_c' });
+    }
+    if (isFan) {
+      st('Tt13', 'Temperatura total, estación 13 (salida del fan)', 'T_{t13} = T_{t2}·τ_{f}', '$Tt2$·$tf$', V.Tt2 * V.tf, 'K', R.Tt13);
+      pst('Pt13', 'Presión total, estación 13', 'P_{t13} = P_{t2}·π_{f}', '$Pt2$·$pif$', V.Pt2 * V.pif, R.Pt13);
+    } else V.Tt13 = V.Tt2 * V.tf;
+    if (two) {
+      st('Tt25', 'Temperatura total, estación 2.5 (salida del compresor de baja)', 'T_{t25} = T_{t13}·τ_{LPC}', '$Tt13$·$tlpc$', V.Tt13 * V.tlpc, 'K', R.Tt25);
+      pst('Pt25', 'Presión total, estación 2.5', 'P_{t25} = P_{t13}·π_{LPC}', (isFan ? '$Pt13$' : '$Pt2$') + '·$pilpc$', (isFan ? V.Pt13 : V.Pt2) * V.pilpc, R.Pt25);
+    }
+    st('Tt3', 'Temperatura total, estación 3 (salida del compresor)', 'T_{t3} = T_{t2}·τ_{c}', '$Tt2$·$tc$', V.Tt2 * V.tc, 'K', R.Tt3);
+    pst('Pt3', 'Presión total, estación 3', 'P_{t3} = P_{t2}·π_{c}', '$Pt2$·$pic$', V.Pt2 * V.pic, R.Pt3);
+
+    /* ---------- 3. Cámara de combustión ---------- */
+    sec('cb', 'Cámara de combustión (estación 4)', 'Balance de energía de la cámara: el combustible aporta h_PR·η_b por kg quemado y el gas sale a Tt4.');
+    st('tl', 'Parámetro de temperatura de la turbina', 'τ_{λ} = c_{pt}·T_{t4}/(c_{pc}·T_{0})', '$cpt$·$Tt4$/($cpc$·$T0$)', V.cpt * V.Tt4 / (V.cpc * V.T0), '', R.tl, { i: 'cm_b' });
+    const fv = (V.tl - V.tr * V.tc) / (V.etab * V.hPR / (V.cpc * V.T0) - V.tl);
+    st('f', 'Relación combustible/aire del núcleo', 'f = (τ_{λ} − τ_{r}·τ_{c}) / (η_{b}·h_{PR}/(c_{pc}·T_{0}) − τ_{λ})', '($tl$ − $tr$·$tc$) / ($etab$·$hPR$/($cpc$·$T0$) − $tl$)', fv, '', R.f, { i: 'cm_b' });
+    pst('Pt4', 'Presión total, estación 4', 'P_{t4} = P_{t3}·π_{b}', '$Pt3$·$pib$', V.Pt3 * V.pib, R.Pt4);
+
+    /* ---------- 4. Turbinas ---------- */
+    sec('tu', 'Turbinas: balance de potencias (estaciones 4, 4.5 y 5)', 'Las turbinas extraen justo la potencia que absorben el fan y los compresores (con el rendimiento mecánico η_m). De ahí sale τ_t.');
+    const kk = 1 / (V.etam * (1 + V.f));
+    if (two) {
+      const tth = 1 - kk * (V.tr / V.tl) * V.tf * V.tlpc * (V.thpc - 1);
+      st('tth', 'Relación de temperaturas de la turbina de alta', isFan ? 'τ_{tH} = 1 − 1/(η_{m}(1+f))·(τ_{r}/τ_{λ})·τ_{f}·τ_{LPC}·(τ_{HPC}−1)' : 'τ_{tH} = 1 − 1/(η_{m}(1+f))·(τ_{r}/τ_{λ})·τ_{LPC}·(τ_{HPC}−1)',
+        isFan ? '1 − 1/($etam$·(1+$f$))·($tr$/$tl$)·$tf$·$tlpc$·($thpc$−1)' : '1 − 1/($etam$·(1+$f$))·($tr$/$tl$)·$tlpc$·($thpc$−1)', tth, '', R.tth, { i: 'cm_hpt', note: 'Eq. 6.10: la turbina de alta mueve solo el compresor de alta.' });
+      const ttl = 1 - kk * (V.tr / (V.tl * V.tth)) * ((1 + V.alpha) * (V.tf - 1) + V.tf * (V.tlpc - 1));
+      st('ttl', 'Relación de temperaturas de la turbina de baja', isFan ? 'τ_{tL} = 1 − 1/(η_{m}(1+f))·τ_{r}/(τ_{λ}·τ_{tH})·((1+α)(τ_{f}−1) + τ_{f}(τ_{LPC}−1))' : 'τ_{tL} = 1 − 1/(η_{m}(1+f))·τ_{r}/(τ_{λ}·τ_{tH})·(τ_{LPC}−1)',
+        isFan ? '1 − 1/($etam$·(1+$f$))·$tr$/($tl$·$tth$)·((1+$alpha$)($tf$−1) + $tf$($tlpc$−1))' : '1 − 1/($etam$·(1+$f$))·$tr$/($tl$·$tth$)·($tlpc$−1)', ttl, '', R.ttl, { i: 'cm_lpt', note: 'Eq. 6.11: la turbina de baja mueve el fan (todo el caudal) y el compresor de baja.' });
+      st('tt', 'Relación de temperaturas de la turbina total', 'τ_{t} = τ_{tH}·τ_{tL}', '$tth$·$ttl$', V.tth * V.ttl, '', R.tt, { i: 'cm_t' });
+    } else {
+      const tt = 1 - kk * (V.tr / V.tl) * ((V.tc - 1) + V.alpha * (V.tf - 1));
+      st('tt', 'Relación de temperaturas de la turbina', isFan ? 'τ_{t} = 1 − 1/(η_{m}(1+f))·(τ_{r}/τ_{λ})·((τ_{c}−1) + α(τ_{f}−1))' : 'τ_{t} = 1 − 1/(η_{m}(1+f))·(τ_{r}/τ_{λ})·(τ_{c}−1)',
+        isFan ? '1 − 1/($etam$·(1+$f$))·($tr$/$tl$)·(($tc$−1) + $alpha$($tf$−1))' : '1 − 1/($etam$·(1+$f$))·($tr$/$tl$)·($tc$−1)', tt, '', R.tt, { i: 'cm_t', note: 'Eq. 6.5.' });
+    }
+    const epsT = (V.gt - 1) / V.gt;
+    if (two) {
+      st('pith', 'Relación de presiones de la turbina de alta', 'π_{tH} = τ_{tH}^{γ_{t}/((γ_{t}−1)·e_{t})}', '$tth$^{$gt$/(($gt$−1)·$et$)}', Math.pow(V.tth, 1 / (epsT * V.et)), '', R.pith);
+      st('pitl', 'Relación de presiones de la turbina de baja', 'π_{tL} = τ_{tL}^{γ_{t}/((γ_{t}−1)·e_{t})}', '$ttl$^{$gt$/(($gt$−1)·$et$)}', Math.pow(V.ttl, 1 / (epsT * V.et)), '', R.pitl);
+    }
+    st('pit', 'Relación de presiones de la turbina total', 'π_{t} = τ_{t}^{γ_{t}/((γ_{t}−1)·e_{t})}', '$tt$^{$gt$/(($gt$−1)·$et$)}', Math.pow(V.tt, 1 / (epsT * V.et)), '', R.pit, { i: 'cm_t' });
+    if (two) {
+      st('Tt45', 'Temperatura total, estación 4.5 (entre turbinas)', 'T_{t45} = T_{t4}·τ_{tH}', '$Tt4$·$tth$', V.Tt4 * V.tth, 'K', R.Tt45);
+      pst('Pt45', 'Presión total, estación 4.5', 'P_{t45} = P_{t4}·π_{tH}', '$Pt4$·$pith$', V.Pt4 * V.pith, R.Pt45);
+    }
+    st('Tt5', 'Temperatura total, estación 5 (salida de la turbina)', 'T_{t5} = T_{t4}·τ_{t}', '$Tt4$·$tt$', V.Tt4 * V.tt, 'K', R.Tt5);
+    pst('Pt5', 'Presión total, estación 5', 'P_{t5} = P_{t4}·π_{t}', '$Pt4$·$pit$', V.Pt4 * V.pit, R.Pt5);
+    pst('Pt9', 'Presión total, estación 9 (entrada de la tobera)', 'P_{t9} = P_{t5}·π_{n}', '$Pt5$·$pin$', V.Pt5 * V.pin, R.Pt9);
+
+    /* ---------- 5. Toberas ---------- */
+    sec('nz', 'Toberas', 'Expansión hasta la presión de salida. Convergente-divergente (adaptada): se da P₀/P₉. Convergente: se comprueba si se bloquea (M = 1).');
+    function nozzleSteps(p, label, gam, Rg, Tt, PtKey, p0pKey, kindCD, ref, sk) {
+      const Pt = V[PtKey];
+      if (kindCD) {
+        pst('P' + p, 'Presión estática de salida' + label, 'P_{' + p + '} = P_{0}/(P_{0}/P_{' + p + '})', '$P0$/$' + p0pKey + '$', V.P0 / V[p0pKey], ref.P);
+        st('r' + p, 'Relación de presiones de la tobera' + label, 'P_{t' + p + '}/P_{' + p + '}', '$' + PtKey + '$/$P' + p + '$', Pt / V['P' + p], '', ref.PtoverP);
+        st('M' + p, 'Mach de salida' + label, 'M_{' + p + '} = √(2/(' + gam + '−1)·((P_{t' + p + '}/P_{' + p + '})^{(' + gam + '−1)/' + gam + '} − 1))',
+          '√(2/($' + (gam === 'γ_{t}' ? 'gt' : 'gc') + '$−1)·($r' + p + '$^{($' + (gam === 'γ_{t}' ? 'gt' : 'gc') + '$−1)/$' + (gam === 'γ_{t}' ? 'gt' : 'gc') + '$} − 1))',
+          machFromPtP(gam === 'γ_{t}' ? V.gt : V.gc, V['r' + p]), '', ref.M, { i: sk });
+      } else {
+        const gv = gam === 'γ_{t}' ? V.gt : V.gc, gk = gam === 'γ_{t}' ? 'gt' : 'gc';
+        const rr = Pt / V.P0, crit = Math.pow((gv + 1) / 2, gv / (gv - 1));
+        st('q' + p, 'Relación de presiones disponible' + label, 'P_{t' + p + '}/P_{0}', '$' + PtKey + '$/$P0$', rr, '', null);
+        st('k' + p, 'Relación de presiones crítica' + label, '(P_{t}/P)_{crít} = ((γ+1)/2)^{γ/(γ−1)}', '(($' + gk + '$+1)/2)^{$' + gk + '$/($' + gk + '$−1)}', crit, '', null);
+        const choked = rr >= crit;
+        st('M' + p, 'Mach de salida' + label, choked ? 'M_{' + p + '} = 1  (P_{t}/P_{0} ≥ crítica: tobera bloqueada)' : 'M_{' + p + '} = √(2/(γ−1)·((P_{t' + p + '}/P_{0})^{(γ−1)/γ} − 1))',
+          choked ? 'P_{t' + p + '}/P_{0} = $q' + p + '$ ≥ $k' + p + '$ → M = 1' : '√(2/($' + gk + '$−1)·($q' + p + '$^{($' + gk + '$−1)/$' + gk + '$} − 1))',
+          choked ? 1 : machFromPtP(gv, rr), '', ref.M, { i: sk });
+        pst('P' + p, 'Presión estática de salida' + label, choked ? 'P_{' + p + '} = P_{t' + p + '}/(P_{t}/P)_{crít}' : 'P_{' + p + '} = P_{0}  (sale a la presión ambiente)',
+          choked ? '$' + PtKey + '$/$k' + p + '$' : '$P0$', choked ? Pt / crit : V.P0, ref.P);
+      }
+      st('T' + p, 'Temperatura estática de salida' + label, 'T_{' + p + '} = T_{t}/(1 + (γ−1)/2·M_{' + p + '}^{2})', '$' + Tt + '$/(1 + ($' + (gam === 'γ_{t}' ? 'gt' : 'gc') + '$−1)/2·$M' + p + '$^{2})', V[Tt] / (1 + ((gam === 'γ_{t}' ? V.gt : V.gc) - 1) / 2 * V['M' + p] * V['M' + p]), 'K', ref.T);
+      const gg = gam === 'γ_{t}' ? 'gt' : 'gc', RR = gam === 'γ_{t}' ? 'Rt' : 'Rc';
+      st('v' + p, 'Velocidad de salida' + label, 'v_{' + p + '} = M_{' + p + '}·√(γ·R·T_{' + p + '})', '$M' + p + '$·√($' + gg + '$·$' + RR + '$·$T' + p + '$)', V['M' + p] * Math.sqrt(V[gg] * V[RR] * V['T' + p]), 'm/s', ref.v);
+    }
+    nozzleSteps('9', ' del núcleo', 'γ_{t}', 'Rt', 'Tt5', 'Pt9', 'p0p9', coreCD, { P: R.core.P9, PtoverP: R.core.Pt9overP9, M: R.core.M, T: R.core.T9, v: R.core.v9 }, 'st_9');
+    st('Fcore', 'Empuje específico del núcleo', 'F_{núcleo}/ṁ_{c} = (1+f)·v_{9} − v_{0} + (1+f)·R_{t}·T_{9}/v_{9}·(1 − P_{0}/P_{9})',
+      '(1+$f$)·$v9$ − $v0$ + (1+$f$)·$Rt$·$T9$/$v9$·(1 − $P0$/$P9$)', (1 + V.f) * V.v9 - V.v0 + (1 + V.f) * V.Rt * V.T9 / V.v9 * (1 - V.P0 / V.P9), 'N·s/kg de aire del núcleo', R.Fcore,
+      { note: 'Empuje por cantidad de movimiento más el término de presión (tobera no adaptada).' });
+    if (isFan) {
+      pst('Pt19', 'Presión total, estación 19 (entrada de la tobera del fan)', 'P_{t19} = P_{t13}·π_{fn}', '$Pt13$·$pifn$', V.Pt13 * V.pifn, R.Pt19);
+      nozzleSteps('19', ' del fan', 'γ_{c}', 'Rc', 'Tt13', 'Pt19', 'p0p19', fanCD, { P: R.fan.P19, PtoverP: R.fan.Pt19overP19, M: R.fan.M, T: R.fan.T19, v: R.fan.v19 }, 'st_19');
+      st('Fsec', 'Empuje específico del fan', 'F_{fan}/ṁ_{s} = v_{19} − v_{0} + R_{c}·T_{19}/v_{19}·(1 − P_{0}/P_{19})',
+        '$v19$ − $v0$ + $Rc$·$T19$/$v19$·(1 − $P0$/$P19$)', V.v19 - V.v0 + V.Rc * V.T19 / V.v19 * (1 - V.P0 / V.P19), 'N·s/kg de aire del bypass', R.Fsec);
+    } else { V.v19 = 0; }
+
+    /* ---------- 6. Prestaciones ---------- */
+    sec('pf', 'Prestaciones', 'Por kg/s de aire total que entra en el motor.');
+    st('Fsp', 'Empuje específico', isFan ? 'F/ṁ_{0} = (F_{núcleo}/ṁ_{c} + α·F_{fan}/ṁ_{s})/(1+α)' : 'F/ṁ_{0} = F_{núcleo}/ṁ_{c}',
+      isFan ? '($Fcore$ + $alpha$·$Fsec$)/(1+$alpha$)' : '$Fcore$', isFan ? V.Fcore / (1 + V.alpha) + V.alpha / (1 + V.alpha) * V.Fsec : V.Fcore, 'N·s/kg', R.Fsp, { i: 'Fsp' });
+    const tsfc = V.f / ((1 + V.alpha) * V.Fsp);
+    st('tsfc', 'Consumo específico (TSFC)', isFan ? 'TSFC = f / ((1+α)·F/ṁ_{0})' : 'TSFC = f / (F/ṁ_{0})', isFan ? '$f$ / ((1+$alpha$)·$Fsp$)' : '$f$ / $Fsp$', tsfc, 'mg/(N·s)', R.tsfc, { scale: 1e6, i: 'tsfc', alt: num(tsfc * 3.6e6) + ' kg/(kN·h)' });
+    const dek = 0.5 * ((1 + V.f) / (1 + V.alpha) * V.v9 * V.v9 + V.alpha / (1 + V.alpha) * V.v19 * V.v19 - V.v0 * V.v0);
+    st('dek', 'Aumento de energía cinética por kg de aire', isFan ? 'Δe_{k} = ½·((1+f)/(1+α)·v_{9}^{2} + α/(1+α)·v_{19}^{2} − v_{0}^{2})' : 'Δe_{k} = ½·((1+f)·v_{9}^{2} − v_{0}^{2})',
+      isFan ? '½·((1+$f$)/(1+$alpha$)·$v9$^{2} + $alpha$/(1+$alpha$)·$v19$^{2} − $v0$^{2})' : '½·((1+$f$)·$v9$^{2} − $v0$^{2})', dek, 'J/kg', R.dek);
+    const undefEta = V.dek <= 0 || V.Fsp <= 0;
+    if (undefEta) cur.steps[cur.steps.length - 1].note = 'Δe_k ≤ 0 o F ≤ 0: η_T, η_P y η_O se calculan por completitud, pero con la definición del apunte no tienen sentido físico.';
+    st('etaT', 'Rendimiento térmico', 'η_{T} = (1+α)·Δe_{k}/(f·h_{PR})', '(1+$alpha$)·$dek$/($f$·$hPR$)', (1 + V.alpha) * V.dek / (V.f * V.hPR), '%', R.etaT, { scale: 100, i: 'etaT' });
+    st('etaP', 'Rendimiento propulsivo', 'η_{P} = v_{0}·F/Δe_{k}', '$v0$·$Fsp$/$dek$', V.v0 * V.Fsp / V.dek, '%', R.etaP, { scale: 100, i: 'etaP' });
+    st('etaO', 'Rendimiento global', 'η_{O} = η_{T}·η_{P}', '$etaT$·$etaP$', V.etaT * V.etaP, '%', R.etaO, { scale: 100, i: 'etaO' });
+    if (isFan) st('FR', 'Cociente de empujes específicos núcleo/fan', 'F_{R} = F_{núcleo}/F_{fan}', '$Fcore$/$Fsec$', V.Fcore / V.Fsec, '', R.FR);
+
+    /* ---------- 7. Dimensionado ---------- */
+    if (R.size) {
+      const s = R.size;
+      sec('dz', 'Caudales y dimensionado', 'Con el caudal de entrada se reparten los flujos y se calcula el área de cada estación con el parámetro de flujo másico MFP (eq. 11.4): A = ṁ·√(R·Tt)/(MFP·Pt).');
+      st('mc', 'Caudal del núcleo', isFan ? 'ṁ_{c} = ṁ_{0}/(1+α)' : 'ṁ_{c} = ṁ_{0}', isFan ? '$m0$/(1+$alpha$)' : '$m0$', V.m0 / (1 + V.alpha), 'kg/s', s.mc);
+      st('ms', 'Caudal del bypass', 'ṁ_{s} = ṁ_{0} − ṁ_{c}', '$m0$ − $mc$', V.m0 - V.mc, 'kg/s', s.ms);
+      st('mf', 'Caudal de combustible', 'ṁ_{f} = f·ṁ_{c}', '$f$·$mc$', V.f * V.mc, 'kg/s', s.mf);
+      st('m9', 'Caudal de gas por la turbina', 'ṁ_{9} = (1+f)·ṁ_{c}', '(1+$f$)·$mc$', (1 + V.f) * V.mc, 'kg/s', (1 + R.f) * s.mc);
+      st('F', 'Empuje total', 'F = (F/ṁ_{0})·ṁ_{0}', '$Fsp$·$m0$', V.Fsp * V.m0, 'N', s.F, { i: 'F', alt: num(V.Fsp * V.m0 / 1000) + ' kN' });
+      const area = (key, name, sym, mdot, Rk, Tk, Pk, gk, M, chk, info, mname) => {
+        V['Mach_' + key] = M;
+        st('mfp' + key, 'Parámetro de flujo másico, ' + name, 'MFP(M) = √γ·M·(1+(γ−1)/2·M^{2})^{−(γ+1)/(2(γ−1))}',
+          '√$' + gk + '$·$Mach_' + key + '$·(1+($' + gk + '$−1)/2·$Mach_' + key + '$^{2})^{−($' + gk + '$+1)/(2($' + gk + '$−1))}', mfp(V[gk], M), '', null, { note: 'M = ' + num(M) });
+        st('A' + key, 'Área, ' + name, 'A_{' + sym + '} = ṁ·√(R·T_{t})/(MFP·P_{t})', '$' + mdot + '$·√($' + Rk + '$·$' + Tk + '$)/($mfp' + key + '$·$' + Pk + '$)', V[mdot] * Math.sqrt(V[Rk] * V[Tk]) / (V['mfp' + key] * V[Pk]), 'm²', chk, { i: info });
+      };
+      if (R.M0 > 0.01) area('0', 'captura (estación 0)', '0', 'm0', 'Rc', 'Tt0', 'Pt0', 'gc', V.M0, s.A0, 'sz_0');
+      area('2', 'entrada del fan (estación 2)', '2', 'm0', 'Rc', 'Tt2', 'Pt2', 'gc', s.M2, s.A2, 'sz_2');
+      area('in', 'entrada del núcleo', 'in', 'mc', 'Rc', two && isFan ? 'Tt13' : 'Tt2', two && isFan ? 'Pt13' : 'Pt2', 'gc', 0.5, s.Ain, null);
+      area('3', 'salida del compresor (estación 3)', '3', 'mc', 'Rc', 'Tt3', 'Pt3', 'gc', s.M3, s.A3, 'sz_3');
+      area('4', 'salida de la cámara (estación 4)', '4', 'm9', 'Rt', 'Tt4', 'Pt4', 'gt', s.M4, s.A4, 'sz_4');
+      area('5', 'salida de la turbina (estación 5)', '5', 'm9', 'Rt', 'Tt5', 'Pt5', 'gt', s.M5, s.A5, 'sz_5');
+      area('9', 'tobera del núcleo (estación 9)', '9', 'm9', 'Rt', 'Tt5', 'Pt9', 'gt', V.M9, s.A9, 'sz_9');
+      if (isFan) area('19', 'tobera del fan (estación 19)', '19', 'ms', 'Rc', 'Tt13', 'Pt19', 'gc', V.M19, s.A19, 'sz_19');
+    }
+    return { sections: secs, nchk, nok, worst, V };
+  }
+
+  /* Texto plano de la hoja, para copiar o descargar */
+  function toText(res, head) {
+    const L = [];
+    if (head) L.push(head, '');
+    res.sections.forEach(sc => {
+      L.push('== ' + sc.title.toUpperCase() + ' ==');
+      sc.steps.forEach(s => {
+        if (s.data) { L.push(text(s.name) + ': ' + text(s.sym) + ' = ' + text(s.shown) + (s.unit && !s.shown.includes(s.unit) ? ' ' + s.unit : '')); return; }
+        L.push(text(s.name));
+        L.push('   ' + text(s.sym));
+        if (s.sub) L.push('   = ' + text(s.sub));
+        L.push('   = ' + text(s.shown) + (s.unit ? ' ' + text(s.unit) : '') + (s.alt ? '  (' + s.alt + ')' : ''));
+      });
+      L.push('');
+    });
+    return L.join('\n');
+  }
+  return { build, html, text, toText, num };
+})();
+if (typeof module !== 'undefined') module.exports = Calcs;
+
+</script>
+<script>
+(function(){
+'use strict';
+const $=s=>document.querySelector(s);
+const fmt=(x,d=2)=>(x==null||!isFinite(x))?'–':x.toFixed(d).replace('.',',');
+
+/* ---------- Tabla 3.3 del apunte: niveles tecnológicos ---------- */
+const TECH={
+  1:{pidmax:.90,ec:.80,ef:.78,pib:.90,etab:.88,et:.80,pin:.95,pifn:.95,etam:.95,Tt4:1110},
+  2:{pidmax:.95,ec:.84,ef:.82,pib:.92,etab:.94,et:.83,pin:.97,pifn:.97,etam:.97,Tt4:1390},
+  3:{pidmax:.98,ec:.88,ef:.86,pib:.94,etab:.99,et:.87,pin:.98,pifn:.98,etam:.99,Tt4:1780},
+  4:{pidmax:.995,ec:.90,ef:.89,pib:.95,etab:.999,et:.89,pin:.995,pifn:.995,etam:.995,Tt4:2000}
+};
+const GAS_DEF={gc:1.4,cpc:1004.8,gt:1.33,cpt:1155.6,hPR:42.8e6};
+const EFF=[['pidmax','π_d máx (toma)'],['ec','e_c compresor'],['ef','e_f fan'],['et','e_t turbina'],['pib','π_b cámara'],['etab','η_b combustión'],['etam','η_m mecánico'],['pin','π_n núcleo'],['pifn','π_n fan']];
+
+const BASE={arch:'turbofan',spools:'two',alt:11000,ov:null,M0:0.78,mdot0:420,tlMode:false,tl:8,
+  pic:36,pif:1.5,pilpc:1.8,pihpc:14.5,alpha:11,Tt4:1700,
+  kindCore:'cd',p0p9:1,kindFan:'cd',p0p19:1,
+  gas:Object.assign({},GAS_DEF),tech:4,
+  pidmax:.995,ec:.9,ef:.89,pib:.95,etab:.999,et:.89,pin:.995,pifn:.995,etam:.995};
+const PRESETS=[
+ {n:'Ejemplo 1 · Turbojet a Mach 2',s:'Apunte §5.2, 12 km',p:{arch:'turbojet',spools:'single',alt:12000,ov:{T0:216.69,P0:19400},M0:2,mdot0:100,pic:10,Tt4:1800,kindCore:'cd',p0p9:.5,tech:0,
+    pidmax:.95,pib:.94,pin:.96,ec:.9,et:.9,etab:.98,etam:.99,pifn:1,gas:{gc:1.4,cpc:1004,gt:1.3,cpt:1239,hPR:42.8e6}}},
+ {n:'Ejemplo 2 · Turbofán α = 8',s:'Apunte §6.1.6, Mach 0,8 a 12 km',p:{arch:'turbofan',spools:'single',alt:12000,ov:{T0:216.69,P0:19400},M0:.8,mdot0:400,pic:36,pif:1.7,alpha:8,Tt4:1666.67,kindCore:'cd',p0p9:.9,kindFan:'cd',p0p19:.9,tech:0,
+    pidmax:.99,pib:.96,pin:.99,pifn:.99,ec:.9,ef:.89,et:.89,etab:.99,etam:.99,gas:{gc:1.4,cpc:1004.8,gt:1.33,cpt:1155.6,hPR:42.8e6}}},
+ {n:'Turbofán civil moderno',s:'2 ejes, α = 11, OPR ≈ 39, toberas adaptadas',p:{}},
+ {n:'Turbojet de crucero subsónico',s:'1 eje, π_c = 20, Mach 0,8',p:{arch:'turbojet',spools:'single',alt:11000,M0:.8,mdot0:60,pic:20,Tt4:1600,kindCore:'cd',p0p9:1,tech:4}}
+];
+
+let S=JSON.parse(JSON.stringify(BASE));
+let R=null, REF=null, GEO=null, activeTab='st';
+
+/* ---------- Controles ---------- */
+const SL=[
+ {k:'alt',l:'Altitud (ISA)',u:'m',min:0,max:15000,step:100,d:0,box:'gFlight'},
+ {k:'M0',l:'Mach de vuelo',min:0,max:2.5,step:.01,d:2,box:'gFlight'},
+ {k:'mdot0',l:'Caudal de aire ṁ₀',u:'kg/s',min:10,max:1500,step:5,d:0,box:'gFlight'},
+ {k:'pic',l:'π compresor (2→3)',min:2,max:60,step:.5,d:1,box:'gCycle',show:s=>s.spools==='single'},
+ {k:'pif',l:'π fan',min:1.1,max:3,step:.01,d:2,box:'gCycle',show:s=>s.arch==='turbofan'},
+ {k:'pilpc',l:'π compresor de baja (LPC)',min:1,max:6,step:.05,d:2,box:'gCycle',show:s=>s.spools==='two'},
+ {k:'pihpc',l:'π compresor de alta (HPC)',min:2,max:30,step:.1,d:1,box:'gCycle',show:s=>s.spools==='two'},
+ {k:'alpha',l:'Relación de derivación α',min:.5,max:16,step:.1,d:1,box:'gCycle',show:s=>s.arch==='turbofan'},
+ {k:'Tt4',l:'Tt4 a la entrada de la turbina',u:'K',min:1000,max:2100,step:10,d:0,box:'gCycle',show:s=>!s.tlMode},
+ {k:'tl',l:'τλ = cpt·Tt4/(cpc·T₀)',min:2,max:14,step:.05,d:2,box:'gCycle',show:s=>s.tlMode},
+ {k:'p0p9',l:'P₀/P₉ núcleo',min:.2,max:1,step:.01,d:2,box:'gNozCore',show:s=>s.kindCore==='cd'},
+ {k:'p0p19',l:'P₀/P₁₉ fan',min:.2,max:1,step:.01,d:2,box:'gNozFan',show:s=>s.arch==='turbofan'&&s.kindFan==='cd'}
+].concat(EFF.map(e=>({k:e[0],l:e[1],min:.7,max:1,step:.005,d:3,box:'gEff',eff:true,show:e[0]==='ef'||e[0]==='pifn'?(s=>s.arch==='turbofan'):null})));
+
+function buildSliders(){
+  for(const c of SL){
+    const w=document.createElement('div');w.className='sl';w.id='w_'+c.k;
+    w.innerHTML=`<div class="row"><label for="s_${c.k}">${c.l}${INFO[c.k]?ib(c.k):''}</label><span class="v" id="v_${c.k}"></span></div><input type="range" id="s_${c.k}" min="${c.min}" max="${c.max}" step="${c.step}">`;
+    $('#'+c.box).appendChild(w);
+    w.querySelector('input').addEventListener('input',e=>{
+      S[c.k]=parseFloat(e.target.value);
+      if(c.k==='alt')S.ov=null;
+      if(c.eff||c.k==='Tt4'||c.k==='tl')S.tech=0;
+      update();
+    });
+  }
+  const opr=document.createElement('div');opr.className='note';opr.id='oprNote';$('#gCycle').appendChild(opr);
+  const tln=document.createElement('div');tln.className='note';tln.id='tlNote';tln.hidden=true;$('#gCycle').appendChild(tln);
+}
+function syncControls(){
+  for(const c of SL){
+    const inp=$('#s_'+c.k),w=$('#w_'+c.k);
+    if(c.k==='M0'){inp.max=S.arch==='turbofan'?1:2.5;if(S.M0>inp.max)S.M0=+inp.max;}
+    inp.value=S[c.k];
+    $('#v_'+c.k).textContent=fmt(S[c.k],c.d)+(c.u?' '+c.u:'');
+    w.classList.toggle('hidden',c.show?!c.show(S):false);
+  }
+  $('#kindCore').value=S.kindCore;$('#kindFan').value=S.kindFan;
+  $('#wrapKindFan').classList.toggle('hidden',S.arch!=='turbofan');
+  $('#segArch').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===S.arch));
+  $('#segSpool').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===S.spools));
+  $('#segTech').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.v===S.tech));
+  const ov=$('#ovNote');ov.hidden=!S.ov;
+  if(S.ov)ov.textContent=`Atmósfera del apunte: T₀ = ${fmt(S.ov.T0,2)} K, P₀ = ${fmt(S.ov.P0/1000,2)} kPa. Mueve la altitud para volver a ISA.`;
+  syncGas();
+  $('#segTl').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.v==='tl')===!!S.tlMode));
+  {const tn=$('#tlNote');tn.hidden=!S.tlMode;if(S.tlMode){const aa=isaOrOv(S);tn.textContent=`Tt4 resultante = ${fmt(S.tl*S.gas.cpc*aa.T/S.gas.cpt,0)} K con T₀ = ${fmt(aa.T,1)} K.`;}}
+  const opr=S.spools==='two'?(S.arch==='turbofan'?S.pif:1)*S.pilpc*S.pihpc:S.pic;
+  $('#oprNote').textContent=`Relación de compresión total (estación 2→3): ${fmt(opr,1)}`;
+}
+
+
+/* ---------- Gas y combustible ---------- */
+const GASF=[['gc','γ aire frío',1.2,1.5,.001,3],['cpc','cp aire frío [J/(kg·K)]',900,1300,.1,1],['gt','γ gas caliente',1.2,1.45,.001,3],['cpt','cp gas caliente [J/(kg·K)]',1000,1500,.1,1],['hPR','h_PR [MJ/kg]',10,125,.1,1]];
+function buildGas(){
+  const box=$('#gGas');
+  box.innerHTML=GASF.map(f=>`<div class="sl"><div class="row"><label for="g_${f[0]}">${f[1].replace('h_PR','h<sub>PR</sub>').replace('cp ','c<sub>p</sub> ').replace('γ ','γ ')}${ib(f[0])}</label></div><input type="number" id="g_${f[0]}" min="${f[2]}" max="${f[3]}" step="${f[4]}" inputmode="decimal"></div>`).join('');
+  GASF.forEach(f=>{
+    const el=$('#g_'+f[0]);
+    el.addEventListener('input',()=>{
+      const v=parseFloat(String(el.value).replace(',','.'));
+      const okv=isFinite(v)&&v>=f[2]&&v<=f[3];
+      el.classList.toggle('bad',!okv);
+      if(!okv)return;
+      S.gas[f[0]]=f[0]==='hPR'?v*1e6:v;S.tech=S.tech;update();
+    });
+  });
+  $('#fuelSel').addEventListener('change',e=>{if(e.target.value==='')return;S.gas.hPR=parseFloat(e.target.value)*1e6;update();});
+  $('#btnGasReset').addEventListener('click',()=>{S.gas=Object.assign({},GAS_DEF);update();});
+}
+function syncGas(){
+  GASF.forEach(f=>{const el=$('#g_'+f[0]);if(!el||document.activeElement===el)return;const v=f[0]==='hPR'?S.gas.hPR/1e6:S.gas[f[0]];el.value=(+v).toFixed(f[5]);el.classList.remove('bad');});
+  const m=GASF&&[...$('#fuelSel').options].find(o=>o.value&&Math.abs(parseFloat(o.value)-S.gas.hPR/1e6)<1e-6);
+  $('#fuelSel').value=m?m.value:'';
+  const g=S.gas,d=GAS_DEF,same=['gc','cpc','gt','cpt','hPR'].every(k=>Math.abs(g[k]-d[k])<1e-9);
+  $('#gasNote').textContent=same?'Valores por defecto: aire γ = 1,4 y c_p = 1004,8; gas caliente γ = 1,33 y c_p = 1155,6; queroseno 42,8 MJ/kg.':'Valores modificados respecto a los del curso por defecto.';
+}
+
+/* ---------- Entrada al solver ---------- */
+function toInput(s){
+  const a=isaOrOv(s);
+  return {arch:s.arch,flight:{T0:a.T,P0:a.P,M0:s.M0},gas:s.gas,
+    design:{spools:s.spools,pic:s.pic,pif:s.pif,pilpc:s.pilpc,pihpc:s.pihpc,alpha:s.alpha,Tt4:s.tlMode?s.tl*s.gas.cpc*a.T/s.gas.cpt:s.Tt4},
+    comp:{pidmax:s.pidmax,pib:s.pib,pin:s.pin,pifn:s.pifn,ec:s.ec,ef:s.ef,et:s.et,etab:s.etab,etam:s.etam},
+    nozzle:{kindCore:s.kindCore,p0p9:s.p0p9,kindFan:s.kindFan,p0p19:s.p0p19},
+    size:{mdot0:s.mdot0,M2:.5}};
+}
+function isaOrOv(s){return s.ov?{T:s.ov.T0,P:s.ov.P0}:Engine.isa(s.alt);}
+
+/* ---------- Ayuda contextual («i») y tooltips ---------- */
+const ib=k=>`<button type="button" class="info" data-i="${k}" aria-label="Más información" title="Más información">i</button>`;
+function placeTip(el,x,y){el.style.left='0px';el.style.top='0px';const w=el.offsetWidth,h=el.offsetHeight;let l=x+14,t=y+14;if(l+w>innerWidth-8)l=x-w-14;if(t+h>innerHeight-8)t=y-h-14;el.style.left=Math.max(8,l)+'px';el.style.top=Math.max(8,t)+'px';}
+const ok_=()=>R&&R.ok;
+const eq=s=>`<span class="eq">${s}</span>`;
+const INFO={
+/* ---- prestaciones ---- */
+Fsp:()=>['Empuje específico',`<p>Empuje que da el motor por cada kg/s de aire que entra. Mide el «tamaño» del motor: a igual empuje total, más empuje específico significa un motor más pequeño y ligero, pero con chorro más rápido (más ruido y peor η<sub>P</sub>).</p><p>${eq('F/ṁ₀ = [F<sub>núcleo</sub> + α·F<sub>fan</sub>]/(1+α)')} con ${eq('F = (1+f)v₉ − v₀ + (1+f)R·T₉/v₉·(1 − P₀/P₉)')}.</p>`+(ok_()?`<p>Ahora: <b>${fmt(R.Fsp,1)} N·s/kg</b>${R.isFan?` (núcleo ${fmt(R.Fcore,1)}, fan ${fmt(R.Fsec,1)} N·s/kg; F<sub>R</sub> = ${fmt(R.FR,2)})`:''}. Un turbofán civil moderno ronda 120–250; un turbojet militar, 700–1000.</p>`:'')],
+F:()=>['Empuje total',`<p>Empuje neto del motor: específico por caudal de aire, ${eq('F = (F/ṁ₀)·ṁ₀')}. El caudal ṁ₀ es un dato de entrada: solo escala el empuje, las potencias y las áreas; no cambia el ciclo.</p>`+(ok_()?`<p>Ahora: <b>${fmt(R.size.F/1000,1)} kN</b> con ṁ₀ = ${fmt(R.size.m0,0)} kg/s.</p>`:'')],
+tsfc:()=>['Consumo específico (TSFC)',`<p>Combustible que se gasta por cada newton de empuje y segundo: cuanto menos, mejor. Es el parámetro de «economía» del motor.</p><p>${eq('TSFC = f / ((1+α)·F/ṁ₀) = v₀ / (η<sub>O</sub>·h<sub>PR</sub>)')}</p>`+(ok_()?`<p>Ahora: <b>${fmt(R.tsfc*1e6,2)} mg/(N·s)</b> (${fmt(R.tsfc*3600*1000,2)} kg/(kN·h)), con f = ${fmt(R.f,5)}. Los turbofanes civiles actuales están en 14–18 mg/(N·s) en crucero.</p><p>La fórmula de la derecha explica por qué a mayor velocidad de vuelo sube: depende de v₀ y del rendimiento global.</p>`:'')],
+etaT:()=>['Rendimiento térmico η<sub>T</sub>',`<p>Fracción de la energía del combustible que acaba como energía cinética del chorro (aumento de energía cinética de la corriente).</p><p>${eq('η<sub>T</sub> = (1+α)·Δek / (f·h<sub>PR</sub>)')}</p>`+(ok_()?`<p>Ahora: <b>${fmt(R.etaT*100,1)} %</b>. Sube con la relación de compresión y con Tt4 (ciclo Brayton) y baja con las pérdidas de componentes. Un turbofán actual está en 45–55 %.</p>`:'')],
+etaP:()=>['Rendimiento propulsivo η<sub>P</sub>',`<p>Qué parte de esa energía cinética se convierte en trabajo útil de empuje (F·v₀) en vez de perderse en la estela.</p><p>${eq('η<sub>P</sub> = v₀·F / Δek')} ≈ 2/(1 + v₉/v₀) para un solo chorro.</p>`+(ok_()?`<p>Ahora: <b>${fmt(R.etaP*100,1)} %</b>. Baja cuando el chorro es mucho más rápido que el avión; por eso los turbofanes de gran derivación (chorro lento, mucho caudal) son más eficientes que los turbojet. A Mach 0, η<sub>P</sub> = 0 por definición.</p>`+(R.etaP>1?'<p class="warnp">Supera el 100 %: las toberas no están adaptadas y el empuje por presión (P₉−P₀)A₉ entra en F pero no en Δek, según la definición del apunte.</p>':''):'')],
+etaO:()=>['Rendimiento global η<sub>O</sub>',`<p>Producto de ambos: de toda la energía del combustible, cuánta se aprovecha realmente para empujar el avión.</p><p>${eq('η<sub>O</sub> = η<sub>T</sub>·η<sub>P</sub> = F·v₀ / (ṁ<sub>f</sub>·h<sub>PR</sub>)')}</p>`+(ok_()?`<p>Ahora: <b>${fmt(R.etaO*100,1)} %</b> (= ${fmt(R.etaT*100,1)} % × ${fmt(R.etaP*100,1)} %). Es la cifra que realmente baja el consumo por kilómetro.</p>`:'')],
+/* ---- vuelo ---- */
+alt:()=>['Altitud (ISA)',`<p>Altitud de vuelo con la atmósfera estándar: T baja 6,5 K por km hasta 11 km (216,65 K) y se mantiene constante por encima. La presión cae de forma exponencial.</p><p>Condiciona T₀ y P₀, que fijan la temperatura de entrada (τ<sub>λ</sub> = c<sub>pt</sub>Tt4/(c<sub>pc</sub>T₀)) y la densidad del aire, y con ella el empuje total.</p>`+(ok_()?`<p>Ahora: T₀ = ${fmt(R.T0,2)} K, P₀ = ${fmt(R.P0/1000,2)} kPa.</p>`:'')],
+M0:()=>['Mach de vuelo',`<p>Velocidad del avión entre velocidad del sonido local: ${eq('v₀ = M₀·√(γ·R·T₀)')}.</p><p>Aumenta la compresión por efecto ram (τ<sub>r</sub>, π<sub>r</sub>) pero también la velocidad v₀ que se resta al empuje: el empuje específico baja y el TSFC sube con M₀. Por encima de Mach 1 la toma pierde presión total (η<sub>r</sub> &lt; 1).</p>`+(ok_()?`<p>Ahora: v₀ = <b>${fmt(R.v0,1)} m/s</b>, τ<sub>r</sub> = ${fmt(R.tr,3)}, π<sub>r</sub> = ${fmt(R.pr,3)}, π<sub>d</sub> = ${fmt(R.pid,4)}.</p>`:'')],
+mdot0:()=>['Caudal de aire ṁ₀',`<p>Masa de aire por segundo que entra al motor (núcleo + bypass). Es el «tamaño» del motor: escala el empuje total, las potencias y las áreas, pero <b>no</b> cambia los valores específicos ni los rendimientos.</p>`+(ok_()?`<p>Ahora: ${fmt(R.size.m0,0)} kg/s = ${fmt(R.size.mc,1)} (núcleo) + ${fmt(R.size.ms,1)} (bypass).</p>`:'')],
+/* ---- ciclo ---- */
+pic:()=>['π compresor (2→3)',`<p>Relación de presiones total del compresor. Más compresión = más rendimiento térmico, pero Tt3 sube (límite de materiales del disco) y deja menos margen de calentamiento para una Tt4 dada.</p><p>${eq('τ<sub>c</sub> = π<sub>c</sub>^((γ<sub>c</sub>−1)/(γ<sub>c</sub>·e<sub>c</sub>))')}</p>`+(ok_()?`<p>Ahora: π<sub>c</sub> = ${fmt(R.pic,1)}, τ<sub>c</sub> = ${fmt(R.tc,3)}, Tt3 = ${fmt(R.Tt3,0)} K.</p>`:'')],
+pif:()=>['π fan',`<p>Relación de presiones del fan. Con la derivación α fija cuánta energía va al chorro frío. Fan más bajo y α más alto → chorro más lento y más eficiente (η<sub>P</sub> mayor), pero fan más grande y pesado.</p>`+(ok_()&&R.isFan?`<p>Ahora: π<sub>f</sub> = ${fmt(R.pif,2)}, τ<sub>f</sub> = ${fmt(R.tf,3)}, Tt13 = ${fmt(R.Tt13,0)} K, v₁₉ = ${fmt(R.fan.v19,0)} m/s.</p>`:'')],
+pilpc:()=>['π compresor de baja (LPC)',`<p>Compresión del compresor de baja presión, que va en el eje del fan y la turbina de baja. La compresión total del núcleo es ${eq('π<sub>f</sub>·π<sub>LPC</sub>·π<sub>HPC</sub>')} (el aire del núcleo también pasa por el fan, así que Tt3 incluye su compresión).</p>`+(ok_()?`<p>Ahora: π<sub>LPC</sub> = ${fmt(R.pilpc,2)}, τ<sub>LPC</sub> = ${fmt(R.tlpc,3)}.</p>`:'')],
+pihpc:()=>['π compresor de alta (HPC)',`<p>Compresión del compresor de alta presión (el que mueve la turbina de alta). Es el que más sube Tt3 y la presión de la cámara.</p>`+(ok_()?`<p>Ahora: π<sub>HPC</sub> = ${fmt(R.pihpc,1)}, τ<sub>HPC</sub> = ${fmt(R.thpc,3)}; OPR (2→3) = ${fmt(R.pic,1)}.</p>`:'')],
+alpha:()=>['Relación de derivación α',`<p>Cociente entre el caudal que pasa por el bypass y el que pasa por el núcleo: ${eq('α = ṁ<sub>fan</sub>/ṁ<sub>núcleo</sub>')}.</p><p>Más α: más caudal con chorro más lento → mejor η<sub>P</sub> y menos consumo, pero la turbina tiene que mover un fan mayor. Si α es demasiado alto para la Tt4 y π elegidos, la turbina no tiene potencia suficiente y el ciclo deja de ser viable.</p>`+(ok_()&&R.isFan?`<p>Ahora: α = ${fmt(R.alpha,1)}; ṁ<sub>núcleo</sub> = ${fmt(R.size.mc,1)} kg/s, ṁ<sub>bypass</sub> = ${fmt(R.size.ms,1)} kg/s.</p>`:'')],
+Tt4:()=>['Temperatura de entrada a turbina Tt4',`<p>Temperatura total del gas al salir de la cámara y entrar en la turbina. Es el límite tecnológico del motor (materiales y refrigeración, Tabla 3.3: hasta 2000 K en motores actuales).</p><p>Más Tt4 → más empuje específico y más η<sub>T</sub>, pero más consumo de combustible por kg de aire y más desgaste. Está ligada a τ<sub>λ</sub>.</p>`+(ok_()?`<p>Ahora: Tt4 = ${fmt(R.Tt4,0)} K; τ<sub>λ</sub> = ${fmt(R.tl,3)}; f = ${fmt(R.f,5)}.</p>`:'')],
+tl:()=>['τ<sub>λ</sub> (relación de entalpía de remanso)',`<p>Parámetro del apunte que mide cuánto se calienta el gas respecto al ambiente: ${eq('τ<sub>λ</sub> = c<sub>pt</sub>·Tt4 / (c<sub>pc</sub>·T₀)')}.</p><p>Es útil porque permite fijar el «nivel térmico» del ciclo sin depender de la altitud: si cambias la altitud con τ<sub>λ</sub> fijo, la Tt4 se ajusta sola. En este modo el simulador calcula Tt4 a partir de τ<sub>λ</sub>.</p>`+(ok_()?`<p>Ahora: τ<sub>λ</sub> = <b>${fmt(R.tl,3)}</b> → Tt4 = ${fmt(R.Tt4,0)} K.</p>`:'')],
+kindNoz:()=>['Tipo de tobera',`<p><b>Convergente-divergente:</b> se fija la relación P₀/P₉ (1 = adaptada: P₉ = P₀) y se calcula el Mach de salida con la presión total disponible.</p><p><b>Convergente:</b> se comprueba si está bloqueada. Si Pt/P₀ supera el valor crítico, M = 1 y la presión de salida es mayor que la ambiente; esa parte del empuje es empuje por presión.</p>`],
+p0p9:()=>['P₀/P₉ (tobera del núcleo)',`<p>Relación entre la presión ambiente y la presión estática a la salida de la tobera convergente-divergente. 1 = tobera adaptada (máximo empuje, sin pérdidas por expansión incompleta). Menor que 1 = el chorro sale a más presión que el ambiente (subexpandido).</p>`+(ok_()?`<p>Ahora: M₉ = ${fmt(R.core.M,3)}, v₉ = ${fmt(R.core.v9,0)} m/s, T₉ = ${fmt(R.core.T9,0)} K.</p>`:'')],
+p0p19:()=>['P₀/P₁₉ (tobera del fan)',`<p>Igual que P₀/P₉, para el chorro frío del fan.</p>`+(ok_()&&R.isFan?`<p>Ahora: M₁₉ = ${fmt(R.fan.M,3)}, v₁₉ = ${fmt(R.fan.v19,0)} m/s.</p>`:'')],
+/* ---- eficiencias ---- */
+pidmax:()=>['π<sub>d máx</sub> (pérdida de presión en la toma)',`<p>Recuperación de presión total del difusor a velocidad subsónica. Con Mach &gt; 1 se multiplica por η<sub>r</sub> (ondas de choque).</p>${eq('π<sub>d</sub> = π<sub>d máx</sub>·η<sub>r</sub>')}`+(ok_()?`<p>Ahora: π<sub>d</sub> = ${fmt(R.pid,4)}.</p>`:'')],
+ec:()=>['e<sub>c</sub> (eficiencia politrópica del compresor)',`<p>Eficiencia de cada etapa infinitesimal de compresión. Es independiente de la relación de compresión, por eso se usa en vez de la isentrópica: ${eq('τ<sub>c</sub> = π<sub>c</sub>^((γ−1)/(γ·e<sub>c</sub>))')}. Valores típicos 0,88–0,92.</p>`],
+ef:()=>['e<sub>f</sub> (eficiencia politrópica del fan)',`<p>Igual que e<sub>c</sub>, para el fan. Típico 0,88–0,90.</p>`],
+et:()=>['e<sub>t</sub> (eficiencia politrópica de la turbina)',`<p>Eficiencia de expansión de la turbina: ${eq('π<sub>t</sub> = τ<sub>t</sub>^(1/(ε<sub>t</sub>·e<sub>t</sub>))')} con ε<sub>t</sub> = (γ<sub>t</sub>−1)/γ<sub>t</sub>. Típico 0,88–0,92.</p>`],
+pib:()=>['π<sub>b</sub> (pérdida de presión en la cámara)',`<p>Relación de presiones total de la cámara de combustión (≈0,94–0,96 en motores actuales). Es una pérdida inevitable por la fricción y el calentamiento del gas.</p>`],
+etab:()=>['η<sub>b</sub> (eficiencia de combustión)',`<p>Fracción del calor del combustible que realmente se libera. Entra en el balance de la cámara: ${eq('f = (τ<sub>λ</sub> − τ<sub>r</sub>τ<sub>c</sub>) / (η<sub>b</sub>·h<sub>PR</sub>/(c<sub>pc</sub>T₀) − τ<sub>λ</sub>)')}. Actualmente &gt; 0,99.</p>`],
+etam:()=>['η<sub>m</sub> (rendimiento mecánico)',`<p>Fracción de la potencia de la turbina que llega al compresor y al fan (el resto se pierde en cojinetes y accesorios).</p>`],
+pin:()=>['π<sub>n</sub> (tobera del núcleo)',`<p>Pérdida de presión total en la tobera del núcleo (≈0,98–0,995).</p>`],
+pifn:()=>['π<sub>fn</sub> (tobera del fan)',`<p>Pérdida de presión total en la tobera del fan (≈0,98–0,995).</p>`],
+/* ---- gas ---- */
+gc:()=>['γ<sub>c</sub> (aire frío)',`<p>Cociente de calores específicos del aire antes de la cámara (1,4 para aire a temperatura ambiente). Gobierna la compresión y la toma: ${eq('τ<sub>r</sub> = 1 + (γ<sub>c</sub>−1)/2·M₀²')}.</p>`],
+cpc:()=>['c<sub>pc</sub> (calor específico del aire frío)',`<p>Calor específico a presión constante del aire comprimido, en J/(kg·K) (≈1004–1010). Interviene en el trabajo de compresión y en τ<sub>λ</sub>.</p>`],
+gt:()=>['γ<sub>t</sub> (gas caliente)',`<p>Cociente de calores específicos de los gases de combustión (≈1,3–1,33). Se usa en turbina y tobera del núcleo.</p>`],
+cpt:()=>['c<sub>pt</sub> (calor específico del gas caliente)',`<p>Calor específico a presión constante de los gases tras la combustión (≈1150–1240 J/(kg·K)). Entra en la potencia de la turbina y en τ<sub>λ</sub>.</p>`],
+hPR:()=>['h<sub>PR</sub> (poder calorífico del combustible)',`<p>Energía liberada por kg de combustible. Queroseno ≈ 42,8–43,2 MJ/kg; hidrógeno ≈ 120; metano ≈ 50. Un h<sub>PR</sub> mayor reduce el consumo de masa de combustible (f) pero no cambia el empuje específico a la misma Tt4.</p>`+(ok_()?`<p>Ahora: f = ${fmt(R.f,5)} kg de combustible por kg de aire del núcleo.</p>`:'')],
+/* ---- estaciones ---- */
+st_0:()=>['Estación 0 · flujo libre',`<p>Aire sin perturbar, a las condiciones de vuelo. Las totales se obtienen frenando el flujo sin pérdidas: ${eq('Tt0 = T₀(1 + (γ−1)/2·M₀²)')}.</p>`+(ok_()?`<p>T₀ = ${fmt(R.T0,1)} K, Tt0 = ${fmt(R.Tt0,1)} K; P₀ = ${fmt(R.P0/1000,2)} kPa, Pt0 = ${fmt(R.Pt0/1000,2)} kPa; v₀ = ${fmt(R.v0,1)} m/s.</p>`:'')],
+st_2:()=>['Estación 2 · entrada al fan/compresor',`<p>Tras la toma de aire. El proceso es adiabático, así que ${eq('Tt2 = Tt0')}; la presión total baja por las pérdidas: ${eq('Pt2 = Pt0·π<sub>d</sub>')}.</p>`+(ok_()?`<p>Pt2 = ${fmt(R.Pt2/1000,2)} kPa (π<sub>d</sub> = ${fmt(R.pid,4)}).</p>`:'')],
+st_13:()=>['Estación 13 · salida del fan',`<p>Aire del bypass tras el fan: ${eq('Tt13 = Tt2·τ<sub>f</sub>; Pt13 = Pt2·π<sub>f</sub>')}. Es el estado que alimenta la tobera del fan.</p>`+(ok_()&&R.isFan?`<p>Tt13 = ${fmt(R.Tt13,1)} K, Pt13 = ${fmt(R.Pt13/1000,2)} kPa.</p>`:'')],
+st_25:()=>['Estación 25 · salida del compresor de baja',`<p>Entre el compresor de baja y el de alta (motor de 2 ejes): ${eq('Tt25 = Tt2·τ<sub>LPC</sub>')}.</p>`],
+st_3:()=>['Estación 3 · salida del compresor',`<p>Punto de máxima presión y temperatura del aire antes de quemar. Tt3 está limitada por los materiales del último disco del compresor (≈ 900–1000 K).</p>`+(ok_()?`<p>Tt3 = ${fmt(R.Tt3,0)} K, Pt3 = ${fmt(R.Pt3/1000,0)} kPa.</p>`:'')],
+st_4:()=>['Estación 4 · salida de la cámara / entrada a turbina',`<p>Tras quemar el combustible a presión casi constante: ${eq('Pt4 = Pt3·π<sub>b</sub>')}. Tt4 es el dato térmico crítico del ciclo.</p>`+(ok_()?`<p>Tt4 = ${fmt(R.Tt4,0)} K, Pt4 = ${fmt(R.Pt4/1000,0)} kPa.</p>`:'')],
+st_45:()=>['Estación 45 · entre turbinas',`<p>Salida de la turbina de alta y entrada a la de baja: ${eq('Tt45 = Tt4·τ<sub>tH</sub>')}.</p>`],
+st_5:()=>['Estación 5 · salida de la turbina',`<p>La turbina extrae justo la potencia que necesitan el compresor y el fan; lo que queda de presión se usa en la tobera: ${eq('Tt5 = Tt4·τ<sub>t</sub>')}.</p>`+(ok_()?`<p>Tt5 = ${fmt(R.Tt5,0)} K, Pt5 = ${fmt(R.Pt5/1000,1)} kPa.</p>`:'')],
+st_9:()=>['Estación 9 · salida de la tobera del núcleo',`<p>El gas se expande hasta la presión estática de salida P₉ y se acelera hasta v₉. La energía del gas se convierte en energía cinética: ese es el empuje del núcleo.</p>`+(ok_()?`<p>M₉ = ${fmt(R.core.M,3)}${R.core.choked?' (bloqueada)':''}, T₉ = ${fmt(R.core.T9,1)} K, P₉ = ${fmt(R.core.P9/1000,2)} kPa, v₉ = ${fmt(R.core.v9,1)} m/s.</p>`:'')],
+st_19:()=>['Estación 19 · salida de la tobera del fan',`<p>Salida del chorro frío del bypass. En un turbofán de gran derivación genera la mayor parte del empuje.</p>`+(ok_()&&R.isFan?`<p>M₁₉ = ${fmt(R.fan.M,3)}${R.fan.choked?' (bloqueada)':''}, v₁₉ = ${fmt(R.fan.v19,1)} m/s, T₁₉ = ${fmt(R.fan.T19,1)} K.</p>`:'')],
+/* ---- componentes ---- */
+cm_d:()=>['Toma de aire',`<p>Frena el flujo hasta la entrada del compresor. π<sub>d</sub> = π<sub>d máx</sub>·η<sub>r</sub> (η<sub>r</sub> = 1 en subsónico; baja en supersónico por las ondas de choque). τ = 1 (adiabática).</p>`],
+cm_f:()=>['Fan',`<p>Comprime el aire del bypass (y, según el motor, parte del del núcleo). ${eq('τ<sub>f</sub> = π<sub>f</sub>^(ε/e<sub>f</sub>)')}. Cuanto mayor es π<sub>f</sub>, más rápido sale el chorro frío.</p>`],
+cm_lpc:()=>['Compresor de baja',`<p>Primera parte de la compresión del núcleo, en el mismo eje que el fan y la turbina de baja.</p>`],
+cm_hpc:()=>['Compresor de alta',`<p>Segunda parte de la compresión, accionada por la turbina de alta. Da la mayor parte de la relación de compresión total.</p>`],
+cm_c:()=>['Compresor',`<p>Compresor del núcleo (en este caso un solo cuerpo): ${eq('τ<sub>c</sub> = π<sub>c</sub>^(ε/e<sub>c</sub>)')}.</p>`],
+cm_tc:()=>['Compresión total (2→3)',`<p>Producto de todas las compresiones del núcleo; es el OPR (overall pressure ratio) del motor.</p>`],
+cm_b:()=>['Cámara de combustión',`<p>Aquí se quema el combustible. π es la pérdida de presión y τ = Tt4/Tt3 es lo que se calienta el gas. f es el combustible por kg de aire del núcleo y τ<sub>λ</sub> = c<sub>pt</sub>Tt4/(c<sub>pc</sub>T₀).</p>`],
+cm_hpt:()=>['Turbina de alta',`<p>Mueve el compresor de alta. Su τ sale del balance de potencias: ${eq('τ<sub>tH</sub> = 1 − τ<sub>r</sub>τ<sub>f</sub>τ<sub>LPC</sub>(τ<sub>HPC</sub>−1)/(η<sub>m</sub>(1+f)τ<sub>λ</sub>)')}.</p>`],
+cm_lpt:()=>['Turbina de baja',`<p>Mueve el fan y el compresor de baja. Su τ sale del balance de potencias del eje de baja.</p>`],
+cm_t:()=>['Turbina total',`<p>Resultado global del balance de potencias: la turbina extrae justo lo que absorben compresores y fan. π<sub>t</sub> sale de τ<sub>t</sub> y de e<sub>t</sub>: ${eq('π<sub>t</sub> = τ<sub>t</sub>^(1/(ε<sub>t</sub>·e<sub>t</sub>))')}.</p>`],
+cm_nc:()=>['Tobera del núcleo',`<p>Acelera el gas caliente. π<sub>n</sub> es la pérdida de presión total y τ = 1 (adiabática). Se indica si está bloqueada.</p>`],
+cm_nf:()=>['Tobera del fan',`<p>Acelera el aire del bypass.</p>`],
+/* ---- potencias ---- */
+pw_fan:()=>['Potencia del fan',`<p>Trabajo por kg de aire del núcleo que absorbe el fan: ${eq('α·c<sub>pc</sub>·Tt2·(τ<sub>f</sub> − 1)')}.</p>`],
+pw_comp:()=>['Potencia de compresión del núcleo',`<p>Trabajo por kg de aire del núcleo que absorben los compresores: ${eq('c<sub>pc</sub>·Tt2·(τ<sub>c</sub> − 1)')}.</p>`],
+pw_abs:()=>['Total absorbido',`<p>Suma de lo que absorben fan y compresores: es lo que tiene que entregar la turbina.</p>`],
+pw_turb:()=>['Potencia extraída por la turbina',`<p>Trabajo que saca la turbina al gas: ${eq('(1+f)·c<sub>pt</sub>·Tt4·(1 − τ<sub>t</sub>)')}.</p>`],
+pw_del:()=>['Potencia entregada al eje',`<p>Tras el rendimiento mecánico: debe ser igual a «Total absorbido». Si no se puede igualar con la Tt4 dada, el ciclo no es viable.</p>`],
+/* ---- dimensionado ---- */
+sz_0:()=>['Área de captura',`<p>Área de la corriente libre que entra en el motor: ${eq('A<sub>0</sub> = ṁ₀/(ρ₀v₀)')}.</p>`],
+sz_2:()=>['Entrada del fan',`<p>Área anular de la entrada a Mach de diseño 0,5: ${eq('A = ṁ·√(R·Tt) / (MFP(M)·Pt)')} (eq. 11.4).</p>`],
+sz_3:()=>['Salida del compresor',`<p>Área a Mach 0,3 con las condiciones de la estación 3: pequeña por la alta densidad.</p>`],
+sz_4:()=>['Salida de la cámara',`<p>Área a Mach 0,25 con gas caliente; define la sección de entrada de la turbina.</p>`],
+sz_5:()=>['Salida de la turbina',`<p>Área a Mach 0,45; mayor que A<sub>4</sub> porque el gas se expandió.</p>`],
+sz_9:()=>['Tobera del núcleo',`<p>Área de salida con el Mach calculado en la estación 9.</p>`],
+sz_19:()=>['Tobera del fan',`<p>Área de salida del conducto del bypass.</p>`],
+/* ---- pestañas ---- */
+cl:()=>['Memoria de cálculo',`<p>Aquí está <b>todo el cálculo</b> del ciclo, en el orden en que se hace: flujo libre y toma → compresión → cámara → balance de potencias de las turbinas → toberas → prestaciones → áreas. Cada fila tiene el nombre de la magnitud, su <b>fórmula</b>, la <b>sustitución con los números actuales</b> y el <b>resultado</b>.</p><p>Los resultados se recalculan a partir de los números de la sustitución y se comparan con el solver: el aviso verde indica que todos coinciden. Cambia cualquier parámetro del panel izquierdo y la hoja se actualiza. Con «Copiar como texto» o «Descargar .txt» te llevas la hoja completa para el informe.</p>`],
+ts:()=>['Diagrama T–s',`<p>Muestra el ciclo en temperatura y entropía. La compresión sube T con poca entropía; la combustión aumenta T y s; la expansión en la turbina baja T con un aumento de s; la tobera convierte la entalpía en velocidad a entropía constante. La línea discontinua es el aire del bypass.</p><p>El área encerrada representa el trabajo útil del ciclo. Un ciclo con más compresión y más Tt4 encierra más área.</p>`],
+viz:()=>['Corte del motor',`<p>Representación esquemática: la forma sale de las áreas del dimensionado, las partículas viajan a una velocidad proporcional a la del gas en cada zona y el color es la temperatura total. El giro de las palas indica el trabajo de cada compresor; la geometría es ilustrativa.</p>`]
+};
+/* Ventana emergente */
+let popBtn=null;
+function openInfo(k,btn){
+  const f=INFO[k];if(!f){return;}
+  const [t,h]=f(),pop=$('#pop');
+  pop.innerHTML=`<div class="ph"><b>${t}</b><button type="button" class="px" aria-label="Cerrar">×</button></div><div class="pb">${h}</div>`;
+  pop.hidden=false;popBtn=btn;
+  const r=btn.getBoundingClientRect(),w=pop.offsetWidth,h2=pop.offsetHeight;
+  let l=r.left-w+r.width;if(l<8)l=Math.min(r.left,innerWidth-w-8);
+  let tp=r.bottom+8;if(tp+h2>innerHeight-8)tp=Math.max(8,r.top-h2-8);
+  pop.style.left=Math.max(8,l)+'px';pop.style.top=tp+'px';
+  pop.querySelector('.px').addEventListener('click',closePop);
+  pop.querySelector('.px').focus();
+}
+function closePop(){const pop=$('#pop');if(pop&&!pop.hidden){pop.hidden=true;if(popBtn)popBtn.focus();popBtn=null;}}
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('.info');
+  if(b){e.preventDefault();const pp=$('#pop');if(!pp)return;if(popBtn===b&&!pp.hidden){closePop();}else openInfo(b.dataset.i,b);return;}
+  if(!e.target.closest('#pop'))closePop();
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePop();});
+
+/* ---------- Render de resultados ---------- */
+const TILES=[
+ {k:'Fsp',l:'Empuje específico',u:'N·s/kg',d:1,g:r=>r.Fsp,better:1},
+ {k:'F',l:'Empuje total',u:'kN',d:1,g:r=>r.size.F/1000,better:1},
+ {k:'tsfc',l:'TSFC',u:'mg/(N·s)',d:2,g:r=>r.tsfc*1e6,better:-1},
+ {k:'etaT',l:'η térmico',u:'%',d:1,g:r=>r.etaT*100,better:1},
+ {k:'etaP',l:'η propulsivo',u:'%',d:1,g:r=>r.etaP*100,better:1},
+ {k:'etaO',l:'η global',u:'%',d:1,g:r=>r.etaO*100,better:1}
+];
+function renderTiles(){
+  const el=$('#tiles');
+  if(!R.ok){el.innerHTML='';return;}
+  el.innerHTML=TILES.map(t=>{
+    const v=t.g(R);let d='';
+    const undef=(['etaT','etaP','etaO'].includes(t.k)&&(R.dek<=0||R.Fsp<=0))||(t.k==='tsfc'&&R.Fsp<=0);
+    if(undef)return `<div class="card tile">${ib(t.k)}<div class="l">${t.l}</div><div class="big">–</div><div class="u">no definido</div><div class="d"></div></div>`;
+    if(REF&&REF.ok){const rv=t.g(REF),pc=(v-rv)/Math.abs(rv)*100;
+      if(Math.abs(pc)>=.05){const good=(pc*t.better)>0;d=`<span class="d ${good?'up':'down'}">${pc>0?'▲':'▼'} ${fmt(Math.abs(pc),1)} % vs ref.</span>`;}else d='<span class="d">= ref.</span>';}
+    return `<div class="card tile">${ib(t.k)}<div class="l">${t.l}</div><div class="big">${fmt(v,t.d)}</div><div class="u">${t.u}</div>${d||'<div class="d"></div>'}</div>`;
+  }).join('');
+}
+function renderAlerts(){
+  const el=$('#alerts');
+  if(!R.ok){el.innerHTML=`<span class="chip bad">${R.error}</span>`;return;}
+  const ch=[];
+  R.warnings.forEach(w=>ch.push(`<span class="chip warn">${w}</span>`));
+  if(!ch.length)ch.push('<span class="chip ok">Ciclo consistente</span>');
+  el.innerHTML=ch.join('');
+}
+const st=n=>`<span class="st">${n}</span>`;
+function tabStations(){
+  const r=R,rows=[];
+  const add=(n,name,Tt,Pt,T,P,v,M,hl)=>rows.push(`<tr${hl?' class="hl"':''}><td>${st(n)} ${name}</td><td class="n">${fmt(Tt,1)}</td><td class="n">${fmt(Pt/1000,2)}</td><td class="n">${fmt(T,1)}</td><td class="n">${fmt(P/1000,2)}</td><td class="n">${fmt(v,1)}</td><td class="n">${fmt(M,3)}</td><td class="ic">${ib('st_'+n)}</td></tr>`);
+  add('0','Flujo libre',r.Tt0,r.Pt0,r.T0,r.P0,r.v0,r.M0);
+  add('2','Entrada de fan y compresor',r.Tt2,r.Pt2);
+  if(r.isFan)add('13','Salida del fan',r.Tt13,r.Pt13);
+  if(r.two)add('25','Salida del compresor de baja',r.Tt25,r.Pt25);
+  add('3','Salida del compresor',r.Tt3,r.Pt3);
+  add('4','Salida de la cámara',r.Tt4,r.Pt4);
+  if(r.two)add('45','Salida de la turbina de alta',r.Tt45,r.Pt45);
+  add('5','Salida de la turbina',r.Tt5,r.Pt5);
+  add('9','Salida de la tobera del núcleo',r.Tt5,r.Pt9,r.core.T9,r.core.P9,r.core.v9,r.core.M,true);
+  if(r.isFan)add('19','Salida de la tobera del fan',r.Tt13,r.Pt19,r.fan.T19,r.fan.P19,r.fan.v19,r.fan.M,true);
+  return `<table><thead><tr><th>Estación</th><th>T<sub>t</sub> [K]</th><th>P<sub>t</sub> [kPa]</th><th>T [K]</th><th>P [kPa]</th><th>v [m/s]</th><th>M</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>
+  <p class="foot">Las temperaturas y presiones estáticas solo se dan donde el apunte fija el Mach: flujo libre y salidas de tobera. La tabla sigue la numeración de estaciones AS755. Pulsa la «i» de cada fila para ver qué representa y cómo se calcula.</p>`;
+}
+function tabComponents(){
+  const r=R,rows=[];
+  const add=(n,pi,ta,ex,key)=>rows.push(`<tr><td>${n}</td><td class="n">${pi==null?'–':fmt(pi,4)}</td><td class="n">${ta==null?'–':fmt(ta,4)}</td><td class="n" style="text-align:left;color:var(--muted)">${ex||''}</td><td class="ic">${ib(key)}</td></tr>`);
+  add('Toma (π<sub>d</sub> = π<sub>d máx</sub>·η<sub>r</sub>)',r.pid,1,'η<sub>r</sub> = '+fmt(r.etar,4),'cm_d');
+  if(r.isFan)add('Fan',r.pif,r.tf,'e<sub>f</sub> = '+fmt(S.ef,3),'cm_f');
+  if(r.two){add('Compresor de baja',r.pilpc,r.tlpc,'e<sub>c</sub> = '+fmt(S.ec,3),'cm_lpc');add('Compresor de alta',r.pihpc,r.thpc,'e<sub>c</sub> = '+fmt(S.ec,3),'cm_hpc');}
+  else add('Compresor (2→3)',r.pic,r.tc,'e<sub>c</sub> = '+fmt(S.ec,3),'cm_c');
+  add('Compresión total (2→3)',r.pic,r.tc,'','cm_tc');
+  add('Cámara de combustión',S.pib,r.Tt4/r.Tt3,`f = ${fmt(r.f,5)}, τ<sub>λ</sub> = ${fmt(r.tl,3)}`,'cm_b');
+  if(r.two){add('Turbina de alta',r.pith,r.tth,'e<sub>t</sub> = '+fmt(S.et,3),'cm_hpt');add('Turbina de baja',r.pitl,r.ttl,'','cm_lpt');}
+  add('Turbina total',r.pit,r.tt,r.two?'':'e<sub>t</sub> = '+fmt(S.et,3),'cm_t');
+  add('Tobera del núcleo',S.pin,1,r.core.choked?'bloqueada':'','cm_nc');
+  if(r.isFan)add('Tobera del fan',S.pifn,1,r.fan.choked?'bloqueada':'','cm_nf');
+  return `<table><thead><tr><th>Componente</th><th>π</th><th>τ</th><th style="text-align:left">Dato</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>
+  <p class="foot">τ de la turbina sale del balance de potencias (eq. ${r.two?'6.10 y 6.11':'6.5'}); π de la turbina, de su eficiencia politrópica.${r.isFan?' F<sub>R</sub> (cociente de empujes específicos núcleo/fan) = '+fmt(r.FR,3)+'.':''}</p>`;
+}
+function tabPower(){
+  const r=R,mc=r.size.mc,cp=S.gas.cpc,Tt2=r.Tt2;
+  const wFan=r.alpha*cp*Tt2*(r.tf-1), wComp=cp*Tt2*(r.tc-1);
+  const wTurb=(1+r.f)*S.gas.cpt*r.Tt4*(1-r.tt), wDeliv=wTurb*S.etam;
+  const mx=Math.max(wFan+wComp,wTurb,1);
+  const row=(n,w,heat,key)=>`<div class="bar-row"><span>${n}${ib(key)}</span><span class="b"><i class="${heat?'heat':''}" style="width:${Math.max(1,w/mx*100)}%"></i></span><span class="num">${fmt(w/1000,1)} kJ/kg · ${fmt(w*mc/1e6,2)} MW</span></div>`;
+  return `<div class="bars">${row('Fan (parte del bypass)',wFan,false,'pw_fan')}${row('Compresión del núcleo',wComp,false,'pw_comp')}${row('Total absorbido',wFan+wComp,false,'pw_abs')}${row('Turbina (extraída)',wTurb,true,'pw_turb')}${row('Turbina (tras η<sub>m</sub>)',wDeliv,true,'pw_del')}</div>
+  <p class="foot">Por kg de aire del núcleo y en MW con el caudal elegido. La turbina entrega lo que absorben fan y compresores: es la ecuación que cierra el ciclo y la que limita α y π a la vez.</p>`;
+}
+function tabSize(){
+  const r=R,s=r.size;
+  const rt=(A,h)=>Math.sqrt(A/(Math.PI*(1-h*h)));
+  const row=(n,A,h,m,key)=>`<tr><td>${n}</td><td class="n">${fmt(m,3)}</td><td class="n">${fmt(A,3)}</td><td class="n">${h==null?'–':fmt(rt(A,h),3)}</td><td class="ic">${ib(key)}</td></tr>`;
+  const rows=[];
+  if(s.A0)rows.push(`<tr><td>${st(0)} Captura</td><td class="n">${fmt(r.M0,2)}</td><td class="n">${fmt(s.A0,3)}</td><td class="n">–</td><td class="ic">${ib('sz_0')}</td></tr>`);
+  rows.push(row(st(2)+' Entrada del fan',s.A2,.35,s.M2,'sz_2'));
+  rows.push(row(st(3)+' Salida del compresor',s.A3,.9,s.M3,'sz_3'));
+  rows.push(row(st(4)+' Salida de la cámara',s.A4,.85,s.M4,'sz_4'));
+  rows.push(row(st(5)+' Salida de la turbina',s.A5,.6,s.M5,'sz_5'));
+  rows.push(row(st(9)+' Tobera del núcleo',s.A9,.3,r.core.M,'sz_9'));
+  if(r.isFan)rows.push(`<tr><td>${st(19)} Tobera del fan</td><td class="n">${fmt(r.fan.M,2)}</td><td class="n">${fmt(s.A19,3)}</td><td class="n">–</td><td class="ic">${ib('sz_19')}</td></tr>`);
+  return `<table><thead><tr><th>Estación (eq. 11.4)</th><th>M</th><th>Área [m²]</th><th>Radio de punta [m]</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>
+  <p class="foot">Caudales: ṁ₀ = ${fmt(s.m0,0)} kg/s, núcleo ${fmt(s.mc,1)} kg/s, bypass ${fmt(s.ms,1)} kg/s, combustible ${fmt(s.mf,2)} kg/s. Los Mach de diseño de las estaciones 2, 3, 4 y 5 son supuestos (0,5; 0,3; 0,25; 0,45) y las relaciones cubo/punta (0,35; 0,9; 0,85; 0,6; 0,3) son típicas. De aquí sale la forma del corte animado.</p>`;
+}
+/* Validación contra las Tablas 5.2 y 6.2 del apunte */
+const VAL=[
+ {n:'Ejemplo 1 · turbojet',p:0,rows:[['τc',r=>r.tc,2.0771],['f',r=>r.f,0.03567],['τt',r=>r.tt,0.8155],['πt',r=>r.pit,0.3746],['M9',r=>r.core.M,2.253],['F/ṁ₀ [N·s/kg]',r=>r.Fsp,807.1],['TSFC [mg/(N·s)]',r=>r.tsfc*1e6,44.20],['ηT [%]',r=>r.etaT*100,41.93],['ηP [%]',r=>r.etaP*100,74.38],['ηO [%]',r=>r.etaO*100,31.19]]},
+ {n:'Ejemplo 2 · turbofán',p:1,rows:[['τf',r=>r.tf,1.1857],['τc',r=>r.tc,3.1192],['f',r=>r.f,0.02868],['τt',r=>r.tt,0.5487],['M9',r=>r.core.M,1.393],['M19',r=>r.fan.M,1.154],['F/ṁ₀ [N·s/kg]',r=>r.Fsp,176.75],['TSFC [mg/(N·s)]',r=>r.tsfc*1e6,18.03],['FR',r=>r.FR,3.986],['ηT [%]',r=>r.etaT*100,40.98],['ηP [%]',r=>r.etaP*100,74.67],['ηO [%]',r=>r.etaO*100,30.60]]}
+];
+let VALRES=null;
+function runValidation(){
+  let ok=0,tot=0;const out=[];
+  for(const v of VAL){
+    const s=Object.assign(JSON.parse(JSON.stringify(BASE)),JSON.parse(JSON.stringify(PRESETS[v.p].p)));
+    const r=Engine.solve(toInput(s));const rows=[];
+    for(const [n,g,ref] of v.rows){const c=g(r),e=Math.abs(c-ref)/Math.abs(ref);tot++;const pass=e<0.01;if(pass)ok++;rows.push({n,c,ref,e,pass});}
+    out.push({n:v.n,rows});
+  }
+  VALRES={ok,tot,out};
+  const chip=$('#valChip');chip.textContent=`Reproduce ${ok}/${tot} valores del apunte`;chip.className='chip '+(ok===tot?'ok':'bad');
+}
+function tabValidation(){
+  return VALRES.out.map(b=>`<table style="margin-bottom:14px"><thead><tr><th>${b.n}</th><th>Simulador</th><th>Apunte</th><th>Error</th><th></th></tr></thead><tbody>${b.rows.map(x=>`<tr><td>${x.n}</td><td class="n">${fmt(x.c,4)}</td><td class="n">${fmt(x.ref,4)}</td><td class="n">${fmt(x.e*100,2)} %</td><td class="${x.pass?'ok':'bad'}">${x.pass?'✓':'✗'}</td></tr>`).join('')}</tbody></table>`).join('')+
+  '<p class="foot">Se ejecuta al abrir la página con los datos de los ejemplos resueltos (Tablas 5.2 y 6.2). Tolerancia del 1 %. Las diferencias residuales vienen del redondeo del apunte.</p>';
+}
+
+/* Diagrama T–s con puntos interactivos */
+let TSPTS=[],TSGEO=null;
+function tabTS(){return `<div class="tsbox"><canvas class="ts" id="tsCv" width="760" height="420" role="img" aria-label="Diagrama temperatura-entropía del ciclo. Pasa el cursor sobre los puntos para ver sus valores."></canvas></div><p class="foot">Estados totales del ciclo (en la tobera, la temperatura estática de salida). Línea continua: núcleo; discontinua: bypass. La tobera se dibuja a entropía constante (vertical) hasta la presión estática de salida; la cesión de calor al ambiente cierra el ciclo en la estela. <b>Pasa el cursor sobre un punto</b> para ver T, P y s, y pulsa «i» para entender el diagrama ${ib('ts')}.</p>`;}
+function drawTS(hov){
+  const cv=$('#tsCv');if(!cv||!R.ok)return;
+  const dpr=window.devicePixelRatio||1,W=760,H=420;cv.width=W*dpr;cv.height=H*dpr;
+  const c=cv.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);
+  const cs=getComputedStyle(document.documentElement),col=n=>cs.getPropertyValue(n).trim();
+  const r=R,g=S.gas,Rc=r.Rc,Rt=r.Rt,T0=r.T0,P0=r.P0;
+  const sC=(T,P)=>g.cpc*Math.log(T/T0)-Rc*Math.log(P/P0);
+  const s4=sC(r.Tt4,r.Pt4);
+  const sH=(T,P)=>s4+g.cpt*Math.log(T/r.Tt4)-Rt*Math.log(P/r.Pt4);
+  const pathC=[],pathB=[];
+  const lin=(a,b,n,f)=>{for(let i=0;i<=n;i++){const t=i/n;f(a+(b-a)*t);}};
+  pathC.push([sC(T0,P0),T0]);pathC.push([sC(r.Tt2,r.Pt2),r.Tt2]);
+  const eps=(g.gc-1)/g.gc;
+  lin(r.Tt2,r.Tt3,30,T=>{const P=r.Pt2*Math.pow(T/r.Tt2,S.ec/eps);pathC.push([sC(T,P),T]);});
+  lin(r.Tt3,r.Tt4,10,T=>{const P=r.Pt3+(r.Pt4-r.Pt3)*(T-r.Tt3)/(r.Tt4-r.Tt3);pathC.push([T>=r.Tt4-1e-6?s4:sC(T,P),T]);});
+  const epsT=(g.gt-1)/g.gt;
+  lin(r.Tt4,r.Tt5,30,T=>{const P=r.Pt4*Math.pow(T/r.Tt4,1/(epsT*S.et));pathC.push([sH(T,P),T]);});
+  const s9=sH(r.Tt5,r.Pt9);pathC.push([s9,r.Tt5]);pathC.push([s9,r.core.T9]);
+  const sEnd=sH(r.core.T9,P0);
+  if(r.isFan){pathB.push([sC(T0,P0),T0],[sC(r.Tt2,r.Pt2),r.Tt2]);
+    lin(r.Tt2,r.Tt13,20,T=>{const P=r.Pt2*Math.pow(T/r.Tt2,S.ef/eps);pathB.push([sC(T,P),T]);});
+    const s19=sC(r.Tt13,r.Pt19);pathB.push([s19,r.Tt13],[s19,r.fan.T19]);}
+  const all=pathC.concat(pathB);
+  const xs=all.map(p=>p[0]).concat([sEnd]),ys=all.map(p=>p[1]);
+  const x0=Math.min(...xs)-30,x1=Math.max(...xs)+60,y0=Math.min(...ys)*0.9,y1=Math.max(...ys)*1.06;
+  const L=58,Rr=14,T_=14,B=44;
+  const X=x=>L+(x-x0)/(x1-x0)*(W-L-Rr),Y=y=>H-B-(y-y0)/(y1-y0)*(H-B-T_);
+  c.clearRect(0,0,W,H);c.font='11px '+getComputedStyle(document.body).fontFamily;c.lineWidth=1;
+  c.strokeStyle=col('--line');c.fillStyle=col('--muted');
+  niceTicks(y0,y1,6).forEach(v=>{c.beginPath();c.moveTo(L,Y(v));c.lineTo(W-Rr,Y(v));c.stroke();c.textAlign='right';c.fillText(String(Math.round(v)),L-6,Y(v)+4);});
+  niceTicks(x0,x1,6).forEach(v=>{c.textAlign='center';c.fillText(String(Math.round(v)),X(v),H-B+16);});
+  c.textAlign='center';c.fillText('s − s₀  [J/(kg·K)]',(L+W-Rr)/2,H-8);
+  c.save();c.translate(14,(H-B)/2);c.rotate(-Math.PI/2);c.fillText('T  [K]',0,0);c.restore();
+  const stroke=(p,color,dash)=>{c.beginPath();p.forEach((q,i)=>i?c.lineTo(X(q[0]),Y(q[1])):c.moveTo(X(q[0]),Y(q[1])));c.strokeStyle=color;c.lineWidth=2;c.setLineDash(dash||[]);c.stroke();c.setLineDash([]);};
+  stroke(pathC,col('--s1'));
+  if(r.isFan)stroke(pathB,col('--s2'),[6,4]);
+  c.beginPath();c.moveTo(X(s9),Y(r.core.T9));c.lineTo(X(sEnd),Y(T0));c.setLineDash([2,4]);c.strokeStyle=col('--muted');c.lineWidth=1.5;c.stroke();c.setLineDash([]);
+  // puntos interactivos
+  const P=[];
+  const pt=(n,name,s,T,Pp,static_,dx,dy)=>P.push({n,name,s,T,P:Pp,static:static_,px:X(s),py:Y(T),dx,dy});
+  pt('0','Flujo libre',sC(T0,P0),T0,P0,true,-12,14);
+  pt('2','Entrada de fan y compresor',sC(r.Tt2,r.Pt2),r.Tt2,r.Pt2,false,6,-6);
+  if(r.isFan)pt('13','Salida del fan (bypass)',sC(r.Tt13,r.Pt13),r.Tt13,r.Pt13,false,6,-6);
+  if(r.two)pt('25','Salida del compresor de baja',sC(r.Tt25,r.Pt25),r.Tt25,r.Pt25,false,-20,-4);
+  pt('3','Salida del compresor',sC(r.Tt3,r.Pt3),r.Tt3,r.Pt3,false,-14,-6);
+  pt('4','Entrada a la turbina',s4,r.Tt4,r.Pt4,false,6,-6);
+  if(r.two)pt('45','Entre turbinas',sH(r.Tt45,r.Pt45),r.Tt45,r.Pt45,false,6,-6);
+  pt('5','Salida de la turbina',sH(r.Tt5,r.Pt5),r.Tt5,r.Pt5,false,6,14);
+  pt('9','Salida de la tobera del núcleo',s9,r.core.T9,r.core.P9,true,6,14);
+  if(r.isFan)pt('19','Salida de la tobera del fan',sC(r.Tt13,r.Pt19),r.fan.T19,r.fan.P19,true,6,14);
+  TSPTS=P;TSGEO={W,H};
+  P.forEach((p,i)=>{
+    c.beginPath();c.arc(p.px,p.py,i===hov?6:3.4,0,7);c.fillStyle=col('--panel');c.fill();
+    c.lineWidth=i===hov?2.5:2;c.strokeStyle=col('--ink');c.stroke();
+    c.fillStyle=col('--ink');c.textAlign='left';c.font=(i===hov?'600 ':'')+'11px '+getComputedStyle(document.body).fontFamily;c.fillText(p.n,p.px+p.dx,p.py+p.dy);
+  });
+  if(!cv._hov){cv._hov=true;
+    cv.addEventListener('pointermove',e=>{
+      const tip=$('#tip');
+      const rc=cv.getBoundingClientRect(),k=TSGEO.W/rc.width,mx=(e.clientX-rc.left)*k,my=(e.clientY-rc.top)*k;
+      let best=-1,bd=18;TSPTS.forEach((p,i)=>{const d=Math.hypot(p.px-mx,p.py-my);if(d<bd){bd=d;best=i;}});
+      if(best!==cv._last){cv._last=best;drawTS(best>=0?best:undefined);}
+      if(best<0){tip.hidden=true;return;}
+      const p=TSPTS[best];
+      tip.innerHTML=`<b>${p.n} · ${p.name}</b><br>${p.static?'T (estática)':'T<sub>t</sub>'} = ${fmt(p.T,1)} K<br>${p.static?'P (estática)':'P<sub>t</sub>'} = ${fmt(p.P/1000,2)} kPa<br>s − s₀ = ${fmt(p.s,1)} J/(kg·K)`;
+      tip.hidden=false;placeTip(tip,e.clientX,e.clientY);
+    });
+    cv.addEventListener('pointerleave',()=>{$('#tip').hidden=true;if(cv._last>=0){cv._last=-1;drawTS();}});
+  }
+}
+function niceTicks(a,b,n){const st=(b-a)/n,m=Math.pow(10,Math.floor(Math.log10(st))),k=[1,2,2.5,5,10].find(v=>v*m>=st)*m;const o=[];for(let v=Math.ceil(a/k)*k;v<=b;v+=k)o.push(v);return o;}
+
+/* Memoria de cálculo */
+let CLRES=null;
+function tabCalcs(){
+  CLRES=Calcs.build(R);
+  const res=CLRES,allOk=res.nok===res.nchk;
+  const rows=sc=>sc.steps.map(s=>{
+    if(s.data)return `<div class="cl-row dt"><div class="nm">${Calcs.html(s.name)}</div><div class="fm">${Calcs.html(s.sym)}</div><div class="rs"><b>${Calcs.html(s.shown)}</b> <span class="u">${s.shown.includes(s.unit)?'':Calcs.html(s.unit)}</span></div></div>`;
+    const bad=s.err!==undefined&&s.err>=1e-9;
+    return `<div class="cl-row${bad?' bad':''}"><div class="nm">${Calcs.html(s.name)}${s.i&&INFO[s.i]?ib(s.i):''}</div><div class="fm">${Calcs.html(s.sym)}${s.sub?`<span class="sb">= ${Calcs.html(s.sub)}</span>`:''}${s.note?`<span class="nt">${s.note}</span>`:''}</div><div class="rs">= <b>${Calcs.html(s.shown)}</b> <span class="u">${Calcs.html(s.unit)}</span>${s.alt?`<span class="al">${s.alt}</span>`:''}</div></div>`;
+  }).join('');
+  const fv=R.offDesign?'<p class="foot" style="margin:0 0 8px"><b>Punto de vuelo (fuera de diseño).</b> Se muestra el ciclo en las condiciones del punto elegido: las relaciones de presión y Tt4 son las que resultan del balance fuera de diseño y aparecen como datos de entrada. «Volver al diseño» restablece el punto de diseño.</p>':'';
+  return `<div class="cl-bar"><span class="chip ${allOk?'ok':'bad'}">${allOk?`${res.nok}/${res.nchk} pasos comprobados con el solver`:`${res.nchk-res.nok} pasos no coinciden con el solver`}</span>${ib('cl')}<span class="sp"></span><button type="button" class="btn" id="clAll">Contraer todo</button><button type="button" class="btn" id="clCopy">Copiar como texto</button><button type="button" class="btn" id="clDl">Descargar .txt</button></div>${fv}`+
+    res.sections.map(sc=>`<details class="cl-sec" open><summary>${sc.title}<span class="n">${sc.steps.length} ${sc.id==='in'?'datos':'pasos'}</span></summary>${sc.intro?`<p class="intro">${sc.intro}</p>`:''}${rows(sc)}</details>`).join('')+
+    `<p class="foot">Cada resultado se recalcula aquí a partir de los números que ves en la sustitución, y se compara con el cálculo del simulador. Los números se muestran con 5 cifras significativas; el cálculo interno usa toda la precisión.</p>`;
+}
+function clHeader(){
+  const i=R.inp,a=R.isFan?'Turbofán de escape separado, '+(R.two?'2 ejes':'1 eje'):'Turbojet, '+(R.two?'2 ejes':'1 eje');
+  return `Simulador de ciclo de motor · memoria de cálculo\n${a} · M₀ = ${Calcs.num(R.M0)} · T₀ = ${Calcs.num(R.T0)} K · P₀ = ${Calcs.num(R.P0)} Pa · Tt4 = ${Calcs.num(i.design.Tt4)} K${R.offDesign?' · punto de vuelo (fuera de diseño)':''}`;
+}
+function initCalcs(){
+  const sec=()=>$('#panel').querySelectorAll('.cl-sec');
+  const all=$('#clAll');
+  if(all)all.addEventListener('click',()=>{const open=[...sec()].some(d=>d.open);sec().forEach(d=>d.open=!open);all.textContent=open?'Expandir todo':'Contraer todo';});
+  const cp=$('#clCopy'),dl=$('#clDl');
+  const txt=()=>Calcs.toText(CLRES,clHeader());
+  const download=async()=>{
+    try{if(window.claude&&window.claude.use){const dn=await window.claude.use('downloads');if(dn&&dn.save){await dn.save({filename:'memoria_de_calculo.txt',data:txt()});return;}}}catch(e){}
+    const b=new Blob([txt()],{type:'text/plain;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='memoria_de_calculo.txt';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);};
+  if(dl)dl.addEventListener('click',download);
+  if(cp)cp.addEventListener('click',()=>{
+    const done=m=>{cp.textContent=m;setTimeout(()=>{cp.textContent='Copiar como texto';},1800);};
+    try{navigator.clipboard.writeText(txt()).then(()=>done('Copiado ✓'),()=>done('No se pudo copiar: usa Descargar'));}catch(e){done('No se pudo copiar: usa Descargar');}
+  });
+}
+const TABS=[['st','Estaciones',tabStations],['cm','Componentes',tabComponents],['ts','Ciclo T–s',tabTS],['pw','Potencias',tabPower],['sz','Dimensionado',tabSize],['cl','Cálculos',tabCalcs],['va','Validación',tabValidation],['ms','Vuelo (misión)',tabMission]];
+function buildTabs(){
+  const tl=$('#tabs');
+  tl.innerHTML=TABS.map(t=>`<button type="button" role="tab" id="tab_${t[0]}" data-t="${t[0]}" aria-selected="${t[0]===activeTab}">${t[1]}</button>`).join('');
+  tl.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{activeTab=b.dataset.t;renderPanel();}));
+}
+function renderPanel(){
+  $('#tabs').querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',b.dataset.t===activeTab));
+  const pnl=$('#panel');
+  if(!R.ok){pnl.innerHTML=`<p class="bad">${R.error}</p>`;return;}
+  const t=TABS.find(x=>x[0]===activeTab);
+  pnl.innerHTML=t[2]();
+  if(activeTab==='ts')drawTS();
+  if(activeTab==='cl')initCalcs();
+  if(activeTab==='ms')initMission();
+}
+
+/* ---------- Geometría y animación ---------- */
+const X={lip:50,fan:100,split:160,c0:170,cm:285,c1:400,b0:410,b1:490,t0:500,tm:550,t1:620,n0:630,n1:740,f1:700,tail:790};
+const RF=115;
+function computeGeo(r){
+  const s=r.size,rt=(A,h)=>Math.sqrt(Math.max(A,1e-9)/(Math.PI*(1-h*h)));
+  const k=RF/rt(s.A2,.35),cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const hubF=.35*RF,hin=r.isFan?.6:.35;
+  const tin=cl(rt(s.Ain,hin)*k,20,RF*(r.isFan?.82:.97)),hubin=hin*tin;
+  const t3=cl(rt(s.A3,.9)*k,10,tin),h3=.9*t3;
+  const t4=cl(rt(s.A4,.85)*k,10,RF*.9),h4=.85*t4;
+  const t5=cl(rt(s.A5,.6)*k,12,RF*.95),h5=.6*t5;
+  const t9=cl(rt(s.A9,.3)*k,12,RF*.95),h9=.3*t9;
+  const tB=Math.min(RF*.95,Math.max(t3,t4)*1.3),hB=Math.min(h3,h4)*.8;
+  const pts=[[X.split,hubin,tin],[X.c0,hubin,tin],[X.c1,h3,t3],[X.b0,hB,tB],[X.b1,h4*.9,t4*1.05],[X.t0,h4,t4],[X.t1,h5,t5],[X.n0,h5,t5],[X.n1,h9,t9]];
+  const G={k,hubF,tin,hubin,t9,h9,pts,rf:RF,isFan:r.isFan};
+  G.core=x=>{
+    if(x<=pts[0][0]){const u=Math.min(1,Math.max(0,(x-X.lip)/(X.fan-X.lip)));return [x<X.lip?0:hubF*Math.sqrt(1-(1-u)*(1-u)),tin];}
+    if(x>=X.n1){return [Math.max(0,h9*(1-(x-X.n1)/(X.tail-X.n1))),t9];}
+    for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];if(x<=b[0]){const u=(x-a[0])/(b[0]-a[0]||1);return [a[1]+(b[1]-a[1])*u,a[2]+(b[2]-a[2])*u];}}
+    return [h9,t9];
+  };
+  if(r.isFan){const tipF1=G.core(X.f1)[1];G.r19=Math.max(tipF1+6,Math.min(RF*1.02,Math.sqrt(tipF1*tipF1+s.A19/Math.PI*k*k)));}
+  G.nac=x=>{
+    if(!r.isFan)return G.core(Math.min(Math.max(x,X.c0),X.n1))[1]+(x<X.c0?RF*(r.isFan?1:.03):3);
+    const a=X.f1-70;if(x<=a)return RF;if(x>=X.f1)return G.r19;return RF+(G.r19-RF)*(x-a)/(X.f1-a);
+  };
+  if(!r.isFan){G.nac=x=>{if(x<=X.c0)return tin+ (x<X.lip?0:0);const c=G.core(Math.min(x,X.n1));return c[1]+2;};}
+  // filas de álabes
+  const n2=p=>Math.max(2,Math.min(9,Math.round(2+1.5*Math.log(Math.max(p,1.05)))));
+  G.rows=[];
+  const addRows=(x0,x1,n,spool)=>{for(let i=0;i<2*n;i++){const x=x0+(x1-x0)*(i+.5)/(2*n);G.rows.push({x,rotor:i%2===0,spool,n:11});}};
+  if(r.two){addRows(X.c0+8,X.cm-6,n2(r.pilpc*(r.isFan?1:1)),'L');addRows(X.cm+6,X.c1-8,n2(r.pihpc),'H');
+    addRows(X.t0+6,X.tm,1,'H');addRows(X.tm+8,X.t1-4,Math.max(2,Math.round(2+1.5*Math.log(1/r.ttl))),'L');}
+  else{addRows(X.c0+8,X.c1-8,n2(r.pic),'L');addRows(X.t0+6,X.t1-4,Math.max(1,Math.round(1.2+1.3*Math.log(1/r.tt))),'L');}
+  return G;
+}
+/* tablas de velocidad y temperatura a lo largo de cada corriente */
+function streamTables(r){
+  const g=S.gas,v=(M,T,gm,Rg)=>M*Math.sqrt(gm*Rg*T);
+  const T2=r.Tt2/(1+.2*.25),vin=v(.5,T2,g.gc,r.Rc);
+  const T3=r.Tt3/(1+.2*.09),v3=v(.3,T3,g.gc,r.Rc);
+  const T4=r.Tt4/(1+(g.gt-1)/2*.0625),v4=v(.25,T4,g.gt,r.Rt);
+  const T5=r.Tt5/(1+(g.gt-1)/2*.2),v5=v(.45,T5,g.gt,r.Rt);
+  const vc=[[-60,r.v0],[X.lip,r.v0],[X.fan,vin],[X.c0,vin*.9],[X.c1,v3],[X.b0,v3],[X.b1,v4],[X.t0,v4],[X.t1,v5],[X.n0,v5],[X.n1,r.core.v9],[1100,r.core.v9]];
+  const tc=[[-60,r.Tt0],[X.fan,r.Tt2],[X.c0,r.Tt2],[X.c1,r.Tt3],[X.b0,r.Tt3],[X.b1,r.Tt4],[X.t0,r.Tt4],[X.t1,r.Tt5],[1100,r.Tt5]];
+  let vb=null,tb=null;
+  if(r.isFan){const T13=r.Tt13/(1+.2*.25),v13=v(.5,T13,g.gc,r.Rc);
+    vb=[[-60,r.v0],[X.lip,r.v0],[X.fan,vin],[X.c0,v13],[X.f1-70,v13],[X.f1,r.fan.v19],[1100,r.fan.v19]];
+    tb=[[-60,r.Tt0],[X.fan,r.Tt2],[X.c0,r.Tt13],[1100,r.Tt13]];}
+  return {vc,tc,vb,tb};
+}
+const interp=(t,x)=>{if(x<=t[0][0])return t[0][1];for(let i=0;i<t.length-1;i++){const a=t[i],b=t[i+1];if(x<=b[0])return a[1]+(b[1]-a[1])*(x-a[0])/(b[0]-a[0]||1);}return t[t.length-1][1];};
+const STOPS=[[0,[47,109,240]],[.25,[31,181,201]],[.5,[215,211,74]],[.75,[240,138,36]],[1,[216,43,43]]];
+function heat(T){const u=Math.max(0,Math.min(1,(T-200)/1800));for(let i=0;i<STOPS.length-1;i++){const a=STOPS[i],b=STOPS[i+1];if(u<=b[0]){const f=(u-a[0])/(b[0]-a[0]);return a[1].map((c,j)=>Math.round(c+(b[1][j]-c)*f));}}return STOPS[4][1];}
+
+let TB=null,parts=[],angL=0,angH=0,wL=3,wH=3,playing=true,last=0,tokCache=null,tokAge=0;
+const NP=520;
+function spawn(initial){
+  const t=Math.random(),isFan=R.isFan;
+  const rin=GEO.tin,rf=RF,hub=GEO.hubF;
+  const aCore=rin*rin-hub*hub,aByp=isFan?rf*rf-rin*rin:0;
+  const free=t<.18;
+  let type=free?2:((!isFan||Math.random()<.45)?0:1);
+  return {x:initial?-60+Math.random()*1160:-60,l:Math.random(),s:Math.random()<.5?1:-1,type};
+}
+function initParts(){parts=[];for(let i=0;i<NP;i++)parts.push(spawn(true));}
+function pxSpeed(v){return 16+0.5*v;}
+function frame(ts){
+  const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
+  if(R&&R.ok&&GEO&&TB){
+    if(playing){
+      angL+=wL*dt;angH+=wH*dt;
+      for(const p of parts){
+        let v;
+        if(p.type===1&&TB.vb)v=interp(TB.vb,p.x);else if(p.type===2)v=R.v0;else v=interp(TB.vc,p.x);
+        p.x+=pxSpeed(v)*dt;
+        if(p.x>1060){Object.assign(p,spawn(false));}
+      }
+    }
+    draw();
+  }
+  requestAnimationFrame(frame);
+}
+function tokens(){
+  if(tokCache&&tokAge++<30)return tokCache;tokAge=0;
+  const cs=getComputedStyle(document.documentElement),c=n=>cs.getPropertyValue(n).trim();
+  tokCache={ink:c('--ink'),metal:c('--metal'),bg:c('--canvas'),grid:c('--grid'),muted:c('--muted'),panel:c('--panel')};return tokCache;
+}
+function draw(){
+  const cv=$('#cv'),W=cv.clientWidth;if(!W)return;
+  const dpr=window.devicePixelRatio||1,pw=Math.round(W*dpr),ph=Math.round(W*dpr*0.38);
+  if(cv.width!==pw||cv.height!==ph){cv.width=pw;cv.height=ph;}
+  const c=cv.getContext('2d'),sc=pw/1000,tk=tokens(),G=GEO,r=R;
+  c.setTransform(sc,0,0,sc,0,0);c.clearRect(0,0,1000,380);
+  c.translate(0,190);
+  // rejilla y eje
+  c.strokeStyle=tk.grid;c.lineWidth=1;
+  for(let x=0;x<=1000;x+=50){c.beginPath();c.moveTo(x,-190);c.lineTo(x,190);c.stroke();}
+  for(let y=-150;y<=150;y+=50){c.beginPath();c.moveTo(0,y);c.lineTo(1000,y);c.stroke();}
+  c.setLineDash([10,5]);c.strokeStyle=tk.metal;c.beginPath();c.moveTo(0,0);c.lineTo(1000,0);c.stroke();c.setLineDash([]);
+  // partículas libres (detrás)
+  for(const p of parts){if(p.type!==2)continue;const base=G.nac(Math.max(X.lip,Math.min(p.x,X.f1)))+10;const y=p.s*(base+p.l*(184-base));
+    c.fillStyle=tk.metal;c.globalAlpha=.45;c.fillRect(p.x,y,5,1.4);}
+  c.globalAlpha=1;
+  // zonas de flujo (tinte)
+  const step=6,poly=(f1,f2,x0,x1)=>{c.beginPath();for(let x=x0;x<=x1;x+=step)c.lineTo(x,-f2(x));for(let x=x1;x>=x0;x-=step)c.lineTo(x,-f1(x));c.closePath();};
+  const mir=fn=>{fn(1);fn(-1);};
+  const core=x=>G.core(x);
+  const tipc=x=>core(x)[1],hubc=x=>core(x)[0];
+  c.save();
+  const clp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const Tat=x=>interp(TB.tc,x);
+  const heatA=(T,a)=>{const h=heat(T);return `rgba(${h[0]},${h[1]},${h[2]},${a})`;};
+  // gradiente de temperatura de pared: frío = metal, caliente = naranja
+  const wallGrad=(amax)=>{const g=c.createLinearGradient(X.c0,0,X.n1,0);
+    for(let i=0;i<=10;i++){const x=X.c0+(X.n1-X.c0)*i/10,T=Tat(x),u=clp((T-320)/1400,0,1);const h=heat(T);g.addColorStop(i/10,`rgba(${h[0]},${h[1]},${h[2]},${(amax*u).toFixed(3)})`);}return g;};
+  const hubMin=(()=>{let m=1e9;for(let x=X.fan;x<=X.t1;x+=10)m=Math.min(m,core(x)[0]);return m;})();
+  const sr=Math.max(2,Math.min(RF*.08,hubMin*.45)),sH=Math.min(sr*2.1,hubMin*.85);
+  const wTurb=x=>x>X.b1;
+  const blade=(x,h,t,w,sk,ang,n,fill)=>{
+    for(let k=0;k<n;k++){const th=ang+2*Math.PI*k/n,s=Math.sin(th),cc=Math.cos(th);let ya=h*s,yb=t*s;
+      if(cc<0){if(Math.abs(yb)<=h)continue;ya=Math.sign(s)*h;}
+      c.globalAlpha=cc>=0?.92:.38;c.fillStyle=fill;
+      c.beginPath();c.moveTo(x-w/2,ya);c.lineTo(x+w/2,ya);c.lineTo(x+w/2+sk,yb);c.lineTo(x-w/2+sk,yb);c.closePath();c.fill();c.stroke();}
+    c.globalAlpha=1;};
+  for(const sg of [1,-1]){
+    c.save();c.scale(1,sg);
+    // cuerpo del rotor (cubo) con tinte de temperatura
+    const hubPath=()=>{c.beginPath();c.moveTo(X.lip,0);for(let x=X.lip;x<=X.tail;x+=step)c.lineTo(x,-hubc(x));c.lineTo(X.tail,0);c.closePath();};
+    hubPath();c.fillStyle=tk.metal;c.globalAlpha=.26;c.fill();c.globalAlpha=1;
+    hubPath();c.fillStyle=wallGrad(.55);c.fill();
+    c.strokeStyle=tk.ink;c.lineWidth=1.2;c.beginPath();for(let x=X.lip;x<=X.tail;x+=step){const y=-hubc(x);x===X.lip?c.moveTo(x,y):c.lineTo(x,y);}c.stroke();
+    // carcasa del núcleo con espesor
+    c.beginPath();for(let x=X.split;x<=X.n1;x+=step){const y=-tipc(x);x===X.split?c.moveTo(x,y):c.lineTo(x,y);}
+    for(let x=X.n1;x>=X.split;x-=step)c.lineTo(x,-(tipc(x)+4));c.closePath();
+    c.fillStyle=tk.metal;c.globalAlpha=.4;c.fill();c.globalAlpha=1;c.fillStyle=wallGrad(.8);c.fill();
+    c.strokeStyle=tk.ink;c.lineWidth=1.5;c.beginPath();for(let x=X.split;x<=X.n1;x+=step){const y=-tipc(x);x===X.split?c.moveTo(x,y):c.lineTo(x,y);}c.stroke();
+    c.lineWidth=1;c.beginPath();for(let x=X.split;x<=X.n1;x+=step){const y=-(tipc(x)+4);x===X.split?c.moveTo(x,y):c.lineTo(x,y);}c.stroke();
+    // góndola con labio redondeado
+    const y0=G.nac(X.lip);
+    c.beginPath();c.moveTo(X.lip,-y0);c.quadraticCurveTo(X.lip-9,-(y0+4),X.lip,-(y0+8));
+    for(let x=X.lip;x<=X.f1;x+=step)c.lineTo(x,-(G.nac(x)+8));c.lineTo(X.f1,-(G.nac(X.f1)+8));
+    for(let x=X.f1;x>=X.lip;x-=step)c.lineTo(x,-G.nac(x));c.closePath();
+    c.fillStyle=tk.metal;c.globalAlpha=.22;c.fill();c.globalAlpha=1;c.strokeStyle=tk.ink;c.lineWidth=1.8;c.stroke();
+    // cámara de combustión anular: domo, inyector y chapa con orificios de dilución
+    const lo=x=>hubc(x)+5,hi=x=>tipc(x)-5,xb=X.b0+6;
+    if(hi(xb)-lo(xb)>6){
+      c.strokeStyle=tk.ink;c.lineWidth=1.3;c.setLineDash([11,4]);
+      for(const f of [lo,hi]){c.beginPath();for(let x=xb;x<=X.b1;x+=step){x===xb?c.moveTo(x,-f(x)):c.lineTo(x,-f(x));}c.stroke();}
+      c.setLineDash([]);c.lineWidth=2.2;c.beginPath();c.moveTo(xb,-lo(xb));c.lineTo(xb,-hi(xb));c.stroke();
+      const m=-(lo(X.b0)+hi(X.b0))/2;
+      c.fillStyle=tk.ink;c.beginPath();c.moveTo(X.b0-9,m-3.2);c.lineTo(xb,m-1.2);c.lineTo(xb,m+1.2);c.lineTo(X.b0-9,m+3.2);c.closePath();c.fill();
+      c.lineWidth=1.2;c.beginPath();c.moveTo(X.b0-9,m);c.lineTo(X.b0-9,-(tipc(X.b0)+4));c.stroke();
+    }
+    c.restore();
+  }
+  // llama dentro de la chapa
+  const fl=Math.min(1,r.f/.035),tt2=performance.now();
+  for(const sg of [1,-1]){
+    const xb=X.b0+6,lo=x=>hubc(x)+5,hi=x=>tipc(x)-5;if(hi(xb)-lo(xb)<=6)continue;
+    const g2=c.createLinearGradient(xb,0,X.b1,0);
+    const a=.25+.45*fl*(.85+.15*Math.sin(tt2/90+sg));
+    g2.addColorStop(0,`rgba(255,200,90,${a*.7})`);g2.addColorStop(1,`rgba(255,90,30,${a})`);
+    c.fillStyle=g2;c.beginPath();c.moveTo(xb,sg*-lo(xb));for(let x=xb;x<=X.b1;x+=step)c.lineTo(x,sg*-hi(x));for(let x=X.b1;x>=xb;x-=step)c.lineTo(x,sg*-lo(x));c.closePath();c.fill();
+    const g3=c.createLinearGradient(xb,0,X.b1,0);g3.addColorStop(0,`rgba(255,245,200,${.55*fl})`);g3.addColorStop(1,`rgba(255,170,60,${.25*fl})`);
+    c.fillStyle=g3;c.beginPath();for(let x=xb;x<=X.b1;x+=step){const m=(lo(x)+hi(x))/2,hh=(hi(x)-lo(x))*(.2+.08*Math.sin(tt2/70+x*.12));c.lineTo(x,sg*-(m+hh));}for(let x=X.b1;x>=xb;x-=step){const m=(lo(x)+hi(x))/2,hh=(hi(x)-lo(x))*(.2+.08*Math.sin(tt2/70+x*.12));c.lineTo(x,sg*-(m-hh));}c.closePath();c.fill();
+  }
+  // estela
+  const L=Math.min(250,60+r.core.v9*.22),[pr,pg,pb]=heat(r.core.T9);
+  const gp=c.createLinearGradient(X.n1,0,X.n1+L,0);gp.addColorStop(0,`rgba(${pr},${pg},${pb},.32)`);gp.addColorStop(1,`rgba(${pr},${pg},${pb},0)`);
+  c.fillStyle=gp;c.beginPath();c.moveTo(X.n1,-G.t9);c.lineTo(X.n1+L,-G.t9*1.15);c.lineTo(X.n1+L,G.t9*1.15);c.lineTo(X.n1,G.t9);c.closePath();c.fill();
+  // ejes: BP (fino, central) y AP (tubo exterior, solo en 2 ejes)
+  const xs0=X.fan-4,xs1=X.t1-4;
+  c.fillStyle=tk.metal;c.globalAlpha=.6;c.fillRect(xs0,-sr,xs1-xs0,2*sr);c.globalAlpha=1;
+  c.strokeStyle=tk.ink;c.lineWidth=.9;c.strokeRect(xs0,-sr,xs1-xs0,2*sr);
+  c.lineWidth=1;c.globalAlpha=.8;
+  for(let k=0;k<4;k++){const ph=angL+k*Math.PI/2;if(Math.cos(ph)<0)continue;const y=sr*.8*Math.sin(ph);c.beginPath();c.moveTo(xs0,y);c.lineTo(xs1,y);c.stroke();}
+  c.globalAlpha=1;
+  if(r.two){const xh0=X.cm-14,xh1=X.tm+10;
+    c.fillStyle=tk.metal;c.globalAlpha=.6;
+    for(const sg of [1,-1]){c.fillRect(xh0,sg>0?sr+1:-sH,xh1-xh0,sH-sr-1);}
+    c.globalAlpha=1;c.strokeStyle=tk.ink;c.lineWidth=.9;
+    for(const sg of [1,-1]){c.strokeRect(xh0,sg>0?sr+1:-sH,xh1-xh0,sH-sr-1);}
+    c.globalAlpha=.8;for(let k=0;k<3;k++){const ph=angH+k*2.094;if(Math.cos(ph)<0)continue;const u=.5+.5*Math.sin(ph),y=sr+1+(sH-sr-1)*u;c.beginPath();c.moveTo(xh0,y);c.lineTo(xh1,y);c.moveTo(xh0,-y);c.lineTo(xh1,-y);c.stroke();}
+    c.globalAlpha=1;}
+  // espinner con hélice (marca de giro)
+  c.strokeStyle=tk.ink;c.lineWidth=1;c.globalAlpha=.6;
+  for(let k=0;k<3;k++){c.beginPath();let pen=false;for(let x=X.lip+3;x<=X.fan;x+=3){const h=core(x)[0],ph=angL+k*2.094+(x-X.lip)/(X.fan-X.lip)*2.2;if(Math.cos(ph)<0){pen=false;continue;}const y=h*Math.sin(ph);pen?c.lineTo(x,y):c.moveTo(x,y);pen=true;}c.stroke();}
+  c.globalAlpha=1;
+  // fan: palas anchas y alabeadas
+  c.strokeStyle=tk.ink;c.lineWidth=.8;
+  blade(X.fan,G.hubF,RF,17,12,angL,16,tk.metal);
+  // álabes directores de salida (OGV) en el conducto secundario
+  if(r.isFan){const xo=X.c0-4;for(const sg of [1,-1]){const a=tipc(xo)+4,b=G.nac(xo);c.fillStyle=tk.metal;c.globalAlpha=.55;c.beginPath();c.moveTo(xo-3,sg*-a);c.lineTo(xo+3,sg*-a);c.lineTo(xo+6,sg*-b);c.lineTo(xo,sg*-b);c.closePath();c.fill();c.globalAlpha=1;c.stroke();}}
+  // filas del núcleo: rotores (palas giratorias + discos) y estatores (corte)
+  for(const rw of G.rows){
+    const [h,t]=core(rw.x),turb=wTurb(rw.x),w=clp((t-h)*.26,3,8.5),sk=(turb?-.7:.6)*w;
+    const bore=rw.spool==='H'&&r.two?sH:sr;
+    if(rw.rotor){
+      c.strokeStyle=tk.ink;c.lineWidth=.7;
+      for(const sg of [1,-1]){c.fillStyle=tk.metal;c.globalAlpha=.5;c.beginPath();c.moveTo(rw.x-2.6,sg*h);c.lineTo(rw.x+2.6,sg*h);c.lineTo(rw.x+1.2,sg*bore*1.15);c.lineTo(rw.x-1.2,sg*bore*1.15);c.closePath();c.fill();c.globalAlpha=1;c.stroke();}
+      blade(rw.x,h,t,w,sk,rw.spool==='H'?angH:angL,turb?13:18,turb?heatA(Tat(rw.x),.85):tk.metal);
+    }else{
+      c.strokeStyle=tk.ink;c.lineWidth=.8;
+      for(const sg of [1,-1]){c.fillStyle=turb?heatA(Tat(rw.x),.6):tk.metal;c.globalAlpha=turb?1:.55;c.beginPath();c.moveTo(rw.x-w/2,sg*t);c.lineTo(rw.x+w/2,sg*t);c.lineTo(rw.x+w/2-sk*.5,sg*h);c.lineTo(rw.x-w/2-sk*.5,sg*h);c.closePath();c.fill();c.globalAlpha=1;c.stroke();}
+    }
+  }
+  // separador entre compresores de baja y alta
+  if(r.two){c.setLineDash([3,4]);c.strokeStyle=tk.muted;c.lineWidth=1;for(const sg of [1,-1]){const[h,t]=core(X.cm);c.beginPath();c.moveTo(X.cm,sg*h);c.lineTo(X.cm,sg*t);c.stroke();}c.setLineDash([]);}
+  // partículas del flujo
+  for(const p of parts){
+    if(p.type===2)continue;
+    let lo,hi;
+    if(p.type===0){const cr=core(Math.min(p.x,X.n1+300));
+      if(p.x<X.split){lo=p.x<X.lip?0:cr[0];hi=G.tin;if(p.x<X.lip)hi=RF*.0+G.tin;}
+      else if(p.x>X.n1){lo=cr[0]*0;hi=cr[1];}else{lo=cr[0];hi=cr[1];}
+    }else{
+      const ct=p.x<X.split?G.tin:core(Math.min(p.x,X.n1+300))[1]+3;
+      lo=ct;hi=G.nac(Math.min(Math.max(p.x,X.fan),X.f1));
+      if(p.x<X.lip)hi=RF;
+    }
+    const y=p.s*(lo+(hi-lo)*(.08+.84*p.l));
+    const T=p.type===1&&TB.tb?interp(TB.tb,p.x):interp(TB.tc,p.x);
+    const [a,b,d]=heat(T);c.fillStyle=`rgba(${a},${b},${d},.9)`;
+    c.beginPath();c.arc(p.x,y,2.1,0,6.3);c.fill();
+  }
+  // marcas de estación
+  c.font='500 11px "IBM Plex Mono",monospace';c.textAlign='center';c.fillStyle=tk.muted;c.strokeStyle=tk.muted;c.lineWidth=1;
+  const marks=[['0',X.lip-28],['2',X.fan],['13',X.c0+2],['25',X.cm],['3',X.c1],['4',X.b1+4],['45',X.tm],['5',X.t1],['9',X.n1],['19',X.f1]];
+  for(const [n,x] of marks){
+    if(n==='13'&&!r.isFan)continue;if(n==='25'&&!r.two)continue;if(n==='45'&&!r.two)continue;if(n==='19'&&!r.isFan)continue;
+    c.beginPath();c.moveTo(x,-186);c.lineTo(x,-178);c.stroke();c.fillText(n,x,-165+ (n==='19'?-12:0)-0);
+  }
+  // lecturas sobre el dibujo
+  c.textAlign='left';c.fillStyle=tk.ink;c.font='500 12px "IBM Plex Mono",monospace';
+  c.fillText(`M₉ ${fmt(r.core.M,2)}${r.core.choked?' bloq.':''}`,X.n1+14,-G.t9-8);
+  if(r.isFan)c.fillText(`M₁₉ ${fmt(r.fan.M,2)}${r.fan.choked?' bloq.':''}`,X.f1+16,-(G.r19+18));
+  c.fillStyle=tk.muted;c.fillText(`Tt4 ${fmt(r.Tt4,0)} K`,X.b0-14,-(Math.max(tipc(X.b0),tipc(X.b1))+10));
+  c.fillText(`v₀ ${fmt(r.v0,0)} m/s`,8,172);
+  c.restore();
+}
+
+/* ---------- Simulación de vuelo (misión) ---------- */
+const MSDEF=()=>({
+  ac:{auto:true,m0:250000,S:440,CD0:0.0165,k:0.042,Mcrit:0.76,nEng:2},
+  eng:{Tt4climb:1900,Tt4cruise:1850,idleFrac:0.05},
+  ms:{mode:'auto',range:5000,h0:450,hEnd:450,casClimbKt:290,casDescKt:280,Mmax:0.85,Mfix:0,hMin:6000,hMax:13000,rocMax:15,rocMin:1.5,cruiseClimb:false,manualRating:'climb',
+    waypoints:[{x:0,h:450,M:.40},{x:350,h:11000,M:.78},{x:4600,h:11000,M:.78},{x:5000,h:450,M:.30}]}
+});
+let MS=MSDEF(),MRES=null,MDIRTY=true,MSCRUB=-1,ODC=null,ODKEY='',FV=null,RD=null;
+const KT=0.514444;
+function getOD(){
+  const inp=toInput(S),key=JSON.stringify(inp);
+  if(key!==ODKEY){ODC=Engine.makeOffDesign(inp);ODKEY=key;}
+  return ODC;
+}
+const getP=(o,p)=>p.split('.').reduce((a,k)=>a[k],o);
+const setP=(o,p,v)=>{const k=p.split('.');const last=k.pop();k.reduce((a,q)=>a[q],o)[last]=v;};
+const MF_AC=[['ac.nEng','Motores',1,4,1,1,'','ms_ac'],['ac.S','Superficie alar S [m²]',50,900,1,1,'','ms_ac'],['ac.CD0','C_D0 (resistencia a sustentación nula)',0.008,0.05,0.0005,1,'','ms_ac'],['ac.k','k (resistencia inducida)',0.02,0.1,0.001,1,'','ms_ac'],['ac.Mcrit','Mach crítico (resistencia de onda)',0.6,0.9,0.01,1,'','ms_ac']];
+const MF_ENG=[['eng.Tt4climb','Tt4 máx. ascenso [K]',1400,2100,10,1,'','ms_eng'],['eng.Tt4cruise','Tt4 máx. crucero [K]',1400,2100,10,1,'','ms_eng'],['eng.idleFrac','Empuje de ralentí [% del máx.]',1,15,0.5,100,'','ms_eng']];
+const MF_AUTO=[['ms.range','Alcance [km]',300,14000,50,1,'','ms_mode'],['ms.h0','Altitud inicial [m]',0,3000,50,1,'','ms_mode'],['ms.hEnd','Altitud final [m]',0,3000,50,1,'','ms_mode'],['ms.Mmax','Mach máximo',0.6,0.95,0.01,1,'','ms_mode'],['ms.Mfix','Mach de crucero (0 = el óptimo)',0,0.95,0.01,1,'','ms_opt'],['ms.hMax','Altitud máxima de crucero [m]',7000,15000,100,1,'','ms_opt'],['ms.casClimbKt','CAS de ascenso [kt]',200,350,5,1,'','ms_mode'],['ms.casDescKt','CAS de descenso [kt]',200,350,5,1,'','ms_mode'],['ms.rocMax','Régimen de ascenso máx. [m/s]',5,40,1,1,'','ms_mode']];
+function mfField(f,dis,val){
+  const v=val!=null?val:getP(MS,f[0])*f[5];
+  return `<label class="mf"><span>${f[1]}${f[7]?ib(f[7]):''}</span><input type="number" data-p="${f[0]}" data-sc="${f[5]}" min="${f[2]}" max="${f[3]}" step="${f[4]}" value="${+(+v).toFixed(4)}"${dis?' disabled':''} inputmode="decimal"></label>`;
+}
+function autoMassNow(){
+  const od=getOD();if(!od.ok)return MS.ac.m0;
+  const m=Mission.autoMass(od,MS.ac,S.ov?11000:S.alt,S.M0);
+  return Math.max(10000,Math.round(m/500)*500);
+}
+function tabMission(){
+  const od=getOD();
+  if(!od.ok)return `<p class="bad">El motor del panel izquierdo no tiene solución: ${od.error}</p>`;
+  if(MS.ac.auto)MS.ac.m0=autoMassNow();
+  const m=MS.ms,manual=m.mode==='manual';
+  const wp=m.waypoints.map((w,i)=>`<tr><td class="n">${i+1}</td><td><input type="number" data-w="${i}.x" value="${w.x}" min="0" step="10"></td><td><input type="number" data-w="${i}.h" value="${w.h}" min="0" max="15000" step="100"></td><td><input type="number" data-w="${i}.M" value="${w.M}" min="0.1" max="0.95" step="0.01"></td><td><button type="button" class="btn sm" data-del="${i}" aria-label="Quitar el punto ${i+1}">✕</button></td></tr>`).join('');
+  return `<div class="msbox">
+  <p class="foot" style="margin-top:0">Vuela el motor del panel izquierdo (su punto de diseño) a lo largo de un perfil vertical completo: ascenso, crucero y descenso. En cada instante el motor se coloca <b>fuera de diseño</b> y se calcula cuánto empuje da, cuánto combustible gasta y a qué Tt4 trabaja. ${ib('ms')}</p>
+  <div class="mgrid">
+   <section><h3>Avión ${ib('ms_ac')}</h3>
+     <label class="mf chk"><input type="checkbox" id="msAuto"${MS.ac.auto?' checked':''}><span>Masa inicial automática (la que el motor sostiene a media misión con su Tt4 de diseño)</span></label>
+     <label class="mf"><span>Masa inicial [kg]</span><input type="number" data-p="ac.m0" data-sc="1" min="5000" max="600000" step="500" value="${Math.round(MS.ac.m0)}"${MS.ac.auto?' disabled':''}></label>
+     ${MF_AC.map(f=>mfField(f)).join('')}</section>
+   <section><h3>Motor en vuelo ${ib('ms_eng')}</h3>${MF_ENG.map(f=>mfField(f)).join('')}
+     <div class="note">El motor se dimensiona con el panel izquierdo. Por encima de su Tt4 de diseño trabaja a potencia «máxima de ascenso». Altitud, Mach y ṁ₀ del panel fijan el punto de diseño.</div></section>
+   <section><h3>Misión ${ib('ms_mode')}</h3>
+     <div class="seg" id="msMode" role="group" aria-label="Tipo de perfil"><button type="button" data-v="auto" aria-pressed="${!manual}">Ideal (automático)</button><button type="button" data-v="manual" aria-pressed="${manual}">Manual</button></div>
+     ${manual?`<div class="note">Tú marcas el perfil: cada punto es una distancia, una altitud y un Mach; entre puntos todo varía linealmente. El simulador calcula el empuje que haría falta y avisa si el motor no llega.</div>
+       <label class="mf"><span>Potencia máxima disponible</span><select id="msRating"><option value="climb"${m.manualRating==='climb'?' selected':''}>Ascenso (Tt4 máx. ascenso)</option><option value="cruise"${m.manualRating==='cruise'?' selected':''}>Crucero (Tt4 máx. crucero)</option></select></label>`
+     :`<div class="note">El simulador elige el Mach y la altitud de crucero que dan el mínimo consumo por kilómetro (máximo alcance específico) y vuela ascenso a máxima potencia, crucero y descenso a ralentí.</div>
+       ${MF_AUTO.map(f=>mfField(f)).join('')}
+       <label class="mf chk"><input type="checkbox" id="msCC"${m.cruiseClimb?' checked':''}><span>Ascenso continuo en crucero (sigue la altitud óptima según se aligera el avión)</span></label>`}
+   </section>
+  </div>
+  ${manual?`<table class="wpt"><thead><tr><th>#</th><th>Distancia [km]</th><th>Altitud [m]</th><th>Mach</th><th></th></tr></thead><tbody>${wp}</tbody></table>
+  <div class="msbtn"><button type="button" class="btn" id="msAdd">Añadir punto</button><button type="button" class="btn" id="msCopy"${MRES&&MRES.opt?'':' disabled'}>Copiar el perfil ideal</button>${ib('ms_wp')}</div>`:''}
+  <div class="msbtn"><button type="button" class="btn primary" id="msRun">Calcular vuelo</button><span class="note" id="msStale"${MDIRTY?'':' hidden'}>Hay cambios sin calcular.</span></div>
+  <div id="msOut"></div></div>`;
+}
+function initMission(){
+  const pnl=$('#panel');
+  pnl.querySelectorAll('input[data-p]').forEach(el=>el.addEventListener('input',()=>{
+    const f=[...MF_AC,...MF_ENG,...MF_AUTO].find(x=>x[0]===el.dataset.p);const sc=+el.dataset.sc||1;
+    const v=parseFloat(String(el.value).replace(',','.'));
+    const lo=f?f[2]:+el.min,hi=f?f[3]:+el.max,okv=isFinite(v)&&v>=lo&&v<=hi;
+    el.classList.toggle('bad',!okv);if(!okv)return;
+    setP(MS,el.dataset.p,v/sc);setDirty();
+  }));
+  pnl.querySelectorAll('input[data-w]').forEach(el=>el.addEventListener('input',()=>{
+    const [i,k]=el.dataset.w.split('.');const v=parseFloat(String(el.value).replace(',','.'));
+    el.classList.toggle('bad',!isFinite(v)||v<0);if(!isFinite(v)||v<0)return;
+    MS.ms.waypoints[+i][k]=v;setDirty();
+  }));
+  pnl.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>{if(MS.ms.waypoints.length<=2)return;MS.ms.waypoints.splice(+b.dataset.del,1);setDirty();renderPanel();}));
+  const q=id=>$('#'+id);
+  q('msAuto').addEventListener('change',e=>{MS.ac.auto=e.target.checked;setDirty();renderPanel();});
+  q('msMode').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{MS.ms.mode=b.dataset.v;setDirty();renderPanel();}));
+  if(q('msCC'))q('msCC').addEventListener('change',e=>{MS.ms.cruiseClimb=e.target.checked;setDirty();});
+  if(q('msRating'))q('msRating').addEventListener('change',e=>{MS.ms.manualRating=e.target.value;setDirty();});
+  if(q('msAdd'))q('msAdd').addEventListener('click',()=>{const w=MS.ms.waypoints,l=w[w.length-1];w.push({x:l.x+100,h:l.h,M:l.M});setDirty();renderPanel();});
+  if(q('msCopy'))q('msCopy').addEventListener('click',copyProfile);
+  q('msRun').addEventListener('click',runMission);
+  if(MRES&&MRES.ok&&!MDIRTY)renderMissionResults();
+  else if(!MRES)runMission();
+}
+function setDirty(){MDIRTY=true;const s=$('#msStale');if(s)s.hidden=false;}
+function copyProfile(){
+  if(!MRES||!MRES.ok)return;
+  const p=MRES.pts,wp=[],push=q=>wp.push({x:Math.round(q.x),h:Math.round(q.h/10)*10,M:+q.M.toFixed(2)});
+  const cl=p.filter(q=>q.phase==='ascenso'),cr=p.filter(q=>q.phase==='crucero'),de=p.filter(q=>q.phase==='descenso');
+  push(p[0]);if(cl.length)push(cl[cl.length-1]);
+  [.33,.66].forEach(f=>{if(cr.length>3)push(cr[Math.floor(cr.length*f)]);});
+  if(cr.length)push(cr[cr.length-1]);if(de.length){push(de[Math.floor(de.length/2)]);push(de[de.length-1]);}
+  wp.push({x:Math.round(MRES.st.x/1000),h:MS.ms.hEnd,M:+Math.max(.2,de.length?de[de.length-1].M:.3).toFixed(2)});
+  MS.ms.waypoints=wp.filter((w,i)=>!i||w.x>wp[i-1].x);MS.ms.mode='manual';setDirty();renderPanel();
+}
+function missionCfg(){
+  const od=getOD(),a=JSON.parse(JSON.stringify(MS.ac)),m=JSON.parse(JSON.stringify(MS.ms)),e=JSON.parse(JSON.stringify(MS.eng));
+  m.casClimb=m.casClimbKt*KT;m.casDesc=m.casDescKt*KT;
+  return {od,ac:a,eng:e,ms:m};
+}
+function runMission(){
+  const od=getOD();if(!od.ok)return;
+  if(MS.ac.auto)MS.ac.m0=autoMassNow();
+  const out=$('#msOut');if(out)out.innerHTML='<p class="note">Calculando el vuelo…</p>';
+  setTimeout(()=>{
+    try{MRES=Mission.simulate(missionCfg());}catch(err){MRES={ok:false,warnings:['Error interno: '+err.message]};}
+    MDIRTY=false;MSCRUB=-1;
+    const s=$('#msStale');if(s)s.hidden=true;
+    if(activeTab==='ms')renderMissionResults();
+  },20);
+}
+const fmtT=s=>{const h=Math.floor(s/3600),m=Math.round((s%3600)/60);return `${h} h ${String(m).padStart(2,'0')} min`;};
+const MCH=[
+ {id:'alt',t:'Altitud',u:'m',x:p=>p.h,yf:v=>fmt(v,0),min:0,info:'ms_alt'},
+ {id:'mach',t:'Mach',u:'',x:p=>p.M,yf:v=>fmt(v,2),info:'ms_mach'},
+ {id:'thr',t:'Empuje y resistencia (total)',u:'kN',s:[{n:'Empuje',y:p=>p.T/1000,c:'--s1'},{n:'Resistencia',y:p=>p.D/1000,c:'--s2',dash:[6,4]}],yf:v=>fmt(v,0),min:0,info:'ms_thr'},
+ {id:'tt4',t:'Tt4',u:'K',x:p=>p.Tt4,yf:v=>fmt(v,0),info:'ms_tt4'},
+ {id:'fuel',t:'Consumo de combustible (total)',u:'kg/h',x:p=>p.mf*3600,yf:v=>fmt(v,0),min:0,info:'ms_fuel'},
+ {id:'mass',t:'Masa del avión',u:'t',x:p=>p.W/1000,yf:v=>fmt(v,1),info:'ms_mass'}
+];
+function renderMissionResults(){
+  const out=$('#msOut');if(!out)return;
+  if(!MRES||!MRES.ok){out.innerHTML=`<div class="alerts">${((MRES&&MRES.warnings)||['Sin resultados.']).map(w=>`<span class="chip bad">${w}</span>`).join('')}</div>`;return;}
+  const s=MRES.sum,p=MRES.pts,cr=p.filter(q=>q.phase==='crucero');
+  const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+  const cruiseTxt=MRES.opt?`M ${fmt(MRES.opt.M,2)} · ${fmt(MRES.opt.h/1000,1)} km${S.ac?'':''}`:(cr.length?`M ${fmt(avg(cr.map(q=>q.M)),2)} · ${fmt(avg(cr.map(q=>q.h))/1000,1)} km`:'–');
+  const kp=(l,v,u,k)=>`<div class="card tile">${ib(k)}<div class="l">${l}</div><div class="big sm">${v}</div><div class="u">${u}</div></div>`;
+  const wl=(MRES.warnings||[]).map(w=>`<span class="chip warn">${w}</span>`).join('');
+  out.innerHTML=`<div class="alerts">${wl||'<span class="chip ok">Misión completada sin avisos</span>'}</div>
+  <div class="tiles ms-kpi">${kp('Combustible',fmt(s.fuel/1000,1),'t ('+fmt(s.fuel/(MS.ac.m0)*100,1)+' % de la masa inicial)','ms_k_fuel')}${kp('Tiempo de vuelo',fmtT(s.time),'','ms_k_time')}${kp('Distancia',fmt(s.dist,0),'km','ms_k_dist')}${kp('Consumo por km',fmt(s.fuel/Math.max(1,s.dist),2),'kg/km','ms_k_kgkm')}${kp('Crucero',cruiseTxt,MRES.opt?'óptimo (máx. alcance específico)':'medio','ms_k_cruise')}${kp('Masa final',fmt(s.mEnd/1000,1),'t','ms_k_mass')}</div>
+  <div class="msscrub"><label for="msScrub">Posición en el vuelo (se mueve también sobre las gráficas)</label><input type="range" id="msScrub" min="0" max="${p.length-1}" step="1" value="${Math.max(0,MSCRUB)}"></div>
+  <div class="msread" id="msRead"></div>
+  <div class="mcharts">${MCH.map(c=>`<figure class="mchart"><figcaption>${c.t}${c.u?' ['+c.u+']':''}${ib(c.info)}</figcaption><canvas id="mc_${c.id}" role="img" aria-label="${c.t} en función de la distancia"></canvas></figure>`).join('')}</div>
+  <details class="msdet"><summary>Tabla de puntos del vuelo</summary><div class="tscroll" id="msTable"></div></details>
+  <p class="foot">Modelo simplificado: motor fuera de diseño con turbinas bloqueadas y α constante (sin mapas de compresor), atmósfera ISA sin viento, polar parabólica con resistencia de onda y sin reservas, espera ni rodaje. En ralentí el consumo es una extrapolación empírica. Sirve para comparar motores y perfiles, no para certificar un vuelo.</p>`;
+  drawMissionCharts();
+  const sc=$('#msScrub');sc.addEventListener('input',()=>setScrub(+sc.value,true));
+  MCH.forEach(c=>{const cv=$('#mc_'+c.id);
+    const fn=e=>{const rc=cv.getBoundingClientRect(),xv=MXS.x0+(e.clientX-rc.left-MXS.L)/(rc.width-MXS.L-MXS.R)*(MXS.x1-MXS.x0);
+      let lo=0,hi=p.length-1;while(lo<hi){const m=(lo+hi)>>1;if(p[m].x<xv)lo=m+1;else hi=m;}
+      if(lo>0&&Math.abs(p[lo-1].x-xv)<Math.abs(p[lo].x-xv))lo--;
+      setScrub(lo,true);showChartTip(c,lo,e);};
+    cv.addEventListener('pointermove',fn);cv.addEventListener('pointerdown',fn);
+    cv.addEventListener('pointerleave',()=>{$('#tip').hidden=true;});});
+  const tb=p.filter((q,i)=>i%Math.ceil(p.length/60)===0||i===p.length-1);
+  $('#msTable').innerHTML=`<table><thead><tr><th>Fase</th><th>x [km]</th><th>h [m]</th><th>M</th><th>Masa [t]</th><th>Empuje [kN]</th><th>Resist. [kN]</th><th>Tt4 [K]</th><th>Cons. [kg/h]</th></tr></thead><tbody>${tb.map(q=>`<tr><td>${q.phase}</td><td class="n">${fmt(q.x,0)}</td><td class="n">${fmt(q.h,0)}</td><td class="n">${fmt(q.M,2)}</td><td class="n">${fmt(q.W/1000,1)}</td><td class="n">${fmt(q.T/1000,1)}</td><td class="n">${fmt(q.D/1000,1)}</td><td class="n">${fmt(q.Tt4,0)}</td><td class="n">${fmt(q.mf*3600,0)}</td></tr>`).join('')}</tbody></table>`;
+  if(MSCRUB>=0)setScrub(MSCRUB,false);else updateRead();
+}
+let MXS={x0:0,x1:1,L:46,R:10};
+function drawMissionCharts(){
+  if(!MRES||!MRES.ok)return;
+  const p=MRES.pts,cs=getComputedStyle(document.documentElement),col=n=>cs.getPropertyValue(n).trim();
+  const xs=p.map(q=>q.x);
+  // fases
+  const bands=[];let cur=null;p.forEach((q,i)=>{if(!cur||cur.ph!==q.phase){cur={ph:q.phase,x0:q.x,x1:q.x};bands.push(cur);}cur.x1=q.x;});
+  const idx=MSCRUB>=0?MSCRUB:-1;
+  for(const c of MCH){
+    const cv=$('#mc_'+c.id);if(!cv)continue;
+    const dpr=window.devicePixelRatio||1,W=cv.clientWidth||520,H=210;
+    cv.width=Math.round(W*dpr);cv.height=H*dpr;cv.style.height=H+'px';
+    const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);
+    const series=c.s?c.s.map(s=>({n:s.n,y:p.map(s.y),c:col(s.c),dash:s.dash})):[{n:c.t,y:p.map(c.x),c:col('--s1')}];
+    let y0=Infinity,y1=-Infinity;series.forEach(s=>s.y.forEach(v=>{if(v<y0)y0=v;if(v>y1)y1=v;}));
+    if(c.min!=null)y0=Math.min(c.min,y0>0&&c.min===0?0:y0);
+    if(y1-y0<1e-9)y1=y0+1;const pad=(y1-y0)*.08;y1+=pad;if(c.min==null)y0-=pad;
+    const L=46,R_=10,T=14,B=26,xa=xs[0],xb=xs[xs.length-1]||1;
+    const X=v=>L+(v-xa)/((xb-xa)||1)*(W-L-R_),Y=v=>H-B-(v-y0)/(y1-y0)*(H-B-T);
+    MXS={x0:xa,x1:xb,L,R:R_};
+    g.font='11px '+getComputedStyle(document.body).fontFamily;g.lineWidth=1;
+    bands.forEach((b,i)=>{if(b.ph==='crucero'||b.ph==='manual')return;g.fillStyle=col('--bg');g.fillRect(X(b.x0),T,Math.max(1,X(b.x1)-X(b.x0)),H-B-T);});
+    g.strokeStyle=col('--line');g.fillStyle=col('--muted');g.textAlign='right';
+    niceTicks(y0,y1,4).forEach(v=>{g.beginPath();g.moveTo(L,Y(v));g.lineTo(W-R_,Y(v));g.stroke();g.fillText(c.yf(v),L-6,Y(v)+4);});
+    g.textAlign='center';niceTicks(xa,xb,5).forEach(v=>g.fillText(String(Math.round(v)),X(v),H-B+15));
+    g.textAlign='right';g.fillText('km',W-R_,H-4);
+    series.forEach(s=>{g.beginPath();s.y.forEach((v,i)=>i?g.lineTo(X(xs[i]),Y(v)):g.moveTo(X(xs[i]),Y(v)));g.strokeStyle=s.c;g.lineWidth=2;g.setLineDash(s.dash||[]);g.lineJoin='round';g.stroke();g.setLineDash([]);});
+    if(series.length>1){let lx=L+6;g.textAlign='left';series.forEach(s=>{g.fillStyle=s.c;g.fillRect(lx,4,10,3);g.fillStyle=col('--muted');g.fillText(s.n,lx+14,9);lx+=g.measureText(s.n).width+34;});}
+    if(c.id==='alt'){g.textAlign='left';g.fillStyle=col('--muted');bands.forEach(b=>{if(b.ph==='ascenso'&&X(b.x1)-X(b.x0)>40)g.fillText('ascenso',X(b.x0)+3,T+10);if(b.ph==='descenso'&&X(b.x1)-X(b.x0)>40)g.fillText('descenso',X(b.x0)+3,T+10);});}
+    if(idx>=0){const xv=X(xs[idx]);g.strokeStyle=col('--muted');g.lineWidth=1;g.beginPath();g.moveTo(xv,T);g.lineTo(xv,H-B);g.stroke();
+      series.forEach(s=>{g.beginPath();g.arc(xv,Y(s.y[idx]),4,0,7);g.fillStyle=s.c;g.fill();g.lineWidth=2;g.strokeStyle=col('--panel');g.stroke();});}
+  }
+}
+function showChartTip(c,i,e){
+  const q=MRES.pts[i],tip=$('#tip');
+  const vals=c.s?c.s.map(s=>`${s.n} = ${fmt(s.y(q),1)} ${c.u}`).join('<br>'):`${c.t} = ${c.yf(c.x(q))} ${c.u}`;
+  tip.innerHTML=`<b>${fmt(q.x,0)} km · ${q.phase}</b><br>${vals}`;tip.hidden=false;placeTip(tip,e.clientX,e.clientY);
+}
+function updateRead(){
+  const el=$('#msRead');if(!el||!MRES||!MRES.ok)return;
+  const q=MRES.pts[Math.max(0,MSCRUB)];
+  const L=(l,v)=>`<span><i>${l}</i> ${v}</span>`;
+  el.innerHTML=`<b>${MSCRUB<0?'Inicio':'Punto'} · ${q.phase}</b>`+L('x',fmt(q.x,0)+' km')+L('t',fmtT(q.t))+L('h',fmt(q.h,0)+' m')+L('M',fmt(q.M,3))+L('V',fmt(q.V,0)+' m/s')+L('masa',fmt(q.W/1000,1)+' t')+L('C<sub>L</sub>',fmt(q.CL,3))+L('L/D',fmt(q.W*9.80665/q.D,1))+L('γ',fmt(q.gam,1)+'°')+L('empuje',fmt(q.T/1000,1)+' kN')+L('Tt4',fmt(q.Tt4,0)+' K'+(q.flag==='max'?' (máx.)':q.flag==='idle'?' (ralentí)':''))+L('consumo',fmt(q.mf*3600,0)+' kg/h')+L('TSFC',fmt(q.tsfc*1e6,1)+' mg/(N·s)')+(MSCRUB>=0?`<button type="button" class="btn sm" id="msBack">Volver al diseño</button>`:'');
+  const b=$('#msBack');if(b)b.addEventListener('click',()=>{MSCRUB=-1;exitFlightView();drawMissionCharts();updateRead();$('#msScrub').value=0;});
+}
+let scrubRaf=0;
+function setScrub(i,view){
+  MSCRUB=i;const sc=$('#msScrub');if(sc)sc.value=i;
+  drawMissionCharts();updateRead();
+  if(view){cancelAnimationFrame(scrubRaf);scrubRaf=requestAnimationFrame(()=>setFlightView(i));}
+  else setFlightView(i);
+}
+function setFlightView(i){
+  const od=getOD();if(!od.ok||!MRES||!MRES.ok)return;
+  const q=MRES.pts[i],a=Engine.isa(q.h);
+  const rf=od.at(a.T,a.P,q.M,q.Tt4,true);
+  if(!rf.ok)return;
+  rf.size=Object.assign({},RD.size,{m0:rf.mdot0,mc:rf.mdotc,ms:rf.mdot0-rf.mdotc,mf:rf.mdotf,F:rf.F});
+  rf.flightLabel=`Vuelo: ${fmt(q.x,0)} km · ${fmt(q.h,0)} m · M ${fmt(q.M,2)} · Tt4 ${fmt(q.Tt4,0)} K`;
+  R=rf;FV=i;applyView(rf);renderAlerts();renderTiles();$('#btnBack').hidden=false;
+}
+function exitFlightView(){
+  FV=null;R=RD;if(R&&R.ok)applyView(R);renderAlerts();renderTiles();$('#btnBack').hidden=true;
+}
+Object.assign(INFO,{
+ms:()=>['Simulación de vuelo',`<p>Recorre un perfil vertical completo con el motor que has diseñado. En cada punto se resuelve el equilibrio de fuerzas del avión (empuje, resistencia, peso y aceleración) y se ajusta la potencia del motor (Tt4) para que sea posible; de ahí salen empuje, consumo y Tt4.</p><p>El motor deja de estar en su punto de diseño: el caudal de aire cambia con la altitud y la velocidad y las presiones de compresión se reparten según el balance de potencias.</p>`],
+ms_ac:()=>['Modelo del avión',`<p>Resistencia con polar parabólica: ${eq('C<sub>D</sub> = C<sub>D0</sub> + k·C<sub>L</sub>² + C<sub>D,onda</sub>')} y ${eq('C<sub>D,onda</sub> = 20·(M − M<sub>crit</sub>)⁴')} por encima del Mach crítico. ${eq('C<sub>L</sub> = W/(q·S)')}.</p><p>La masa automática es la que el motor sostiene en vuelo nivelado, a su Tt4 de diseño y a su punto de diseño, a media misión. Los valores por defecto corresponden a un bimotor de fuselaje ancho (L/D máx ≈ 19).</p>`],
+ms_eng:()=>['Motor en vuelo',`<p><b>Tt4 máx. ascenso:</b> potencia máxima disponible al subir. <b>Tt4 máx. crucero:</b> tope en crucero (el óptimo de crucero debe cumplirlo y además dejar capacidad de ascenso). <b>Ralentí:</b> empuje mínimo, como porcentaje del máximo; define el descenso.</p><p>Por debajo de cierta Tt4 el modelo simple no puede resolver el ciclo (el gas no sale por la tobera); en ese caso el consumo se extrapola con una ley empírica.</p>`],
+ms_mode:()=>['Tipo de perfil',`<p><b>Ideal:</b> el simulador calcula el ascenso a máxima potencia con un programa de velocidad (CAS limitada a 250 kt por debajo de 10 000 ft y después CAS/Mach), el crucero óptimo y un descenso a ralentí. El inicio del descenso se ajusta para llegar justo al alcance pedido.</p><p><b>Manual:</b> tú dibujas el perfil con puntos (distancia, altitud, Mach). Se avisa si el motor no da el empuje necesario o si el descenso es más empinado que el de ralentí.</p>`],
+ms_opt:()=>['Crucero óptimo',`<p>Se busca la pareja (Mach, altitud) que maximiza el alcance específico ${eq('SR = V/ṁ<sub>f</sub>')}, es decir, los kilómetros por kg de combustible, dentro de los límites de Mach, altitud y Tt4 de crucero, con margen de ascenso. Si fijas un Mach de crucero, solo se optimiza la altitud.</p><p>Con «ascenso continuo» el avión va subiendo despacio según se aligera, siguiendo la altitud óptima (cruise-climb, el ideal teórico).</p>`],
+ms_wp:()=>['Puntos de ruta',`<p>Cada fila es un punto del perfil (distancia desde el origen, altitud y Mach). Entre puntos la altitud y el Mach varían linealmente. «Copiar el perfil ideal» rellena la tabla con el perfil automático para que lo retoques.</p>`],
+ms_alt:()=>['Perfil de altitud',`<p>Altitud frente a distancia. Las zonas sombreadas son el ascenso y el descenso; el resto es crucero. En el modo ideal con ascenso continuo, la altitud sube suavemente en crucero.</p>`],
+ms_mach:()=>['Mach',`<p>Sigue el programa de velocidad: CAS constante hasta el Mach de crucero y Mach constante después. A igual CAS, el Mach sube con la altitud.</p>`],
+ms_thr:()=>['Empuje y resistencia',`<p>En crucero el empuje iguala la resistencia. En el ascenso el empuje supera la resistencia y la diferencia se convierte en altura y velocidad. En el descenso el empuje es mínimo.</p>`],
+ms_tt4:()=>['Tt4',`<p>Temperatura de entrada a turbina necesaria para dar el empuje que pide cada instante. Muestra cuánta potencia usa el motor: máxima en el ascenso, intermedia en crucero y mínima en el descenso.</p>`],
+ms_fuel:()=>['Consumo de combustible',`<p>Caudal de combustible de todos los motores. Disminuye según el avión se aligera y la resistencia baja.</p>`],
+ms_mass:()=>['Masa del avión',`<p>Masa inicial menos el combustible quemado.</p>`],
+ms_k_fuel:()=>['Combustible quemado',`<p>Combustible total de la misión (despegue ya realizado, sin reservas).</p>`],
+ms_k_time:()=>['Tiempo de vuelo',`<p>Desde el punto inicial hasta el final del descenso.</p>`],
+ms_k_dist:()=>['Distancia',`<p>Distancia horizontal recorrida, sin viento.</p>`],
+ms_k_kgkm:()=>['Consumo por km',`<p>Combustible total entre distancia. Es la medida más directa de eficiencia de la misión.</p>`],
+ms_k_cruise:()=>['Crucero',`<p>Mach y altitud del crucero (en el modo ideal, los que dan el mayor alcance específico).</p>`],
+ms_k_mass:()=>['Masa final',`<p>Masa del avión tras el descenso.</p>`]
+});
+
+/* ---------- Actualización ---------- */
+function applyView(r){
+  TB=streamTables(r);
+  const dTf=r.isFan?r.Tt13-r.Tt2:0;
+  wL=2+5*Math.sqrt(Math.max(0,(r.two?(r.Tt25?r.Tt25-r.Tt2:dTf):(r.Tt3-r.Tt2)))/(r.two?120:450));
+  wH=2+5*Math.sqrt(Math.max(0,r.two?r.Tt3-r.Tt25:r.Tt3-r.Tt2)/(r.two?420:450));
+  wL=Math.min(wL,8);wH=Math.min(wH,8);
+  if(!parts.length)initParts();
+  const base=`${S.arch==='turbofan'?'Turbofán de escape separado':'Turbojet'} · ${S.spools==='two'?'2 ejes':'1 eje'}`;
+  $('#vizTitle').textContent=r.flightLabel?`${base} · ${r.flightLabel}`:`${base} · M ${fmt(S.M0,2)}`;
+}
+function update(){
+  syncControls();
+  RD=Engine.solve(toInput(S));R=RD;FV=null;MSCRUB=-1;MDIRTY=true;
+  $('#btnBack').hidden=true;
+  renderAlerts();renderTiles();
+  if(R.ok){GEO=computeGeo(R);applyView(R);}
+  renderPanel();
+}
+function applyPreset(i){
+  const p=PRESETS[i].p;
+  S=Object.assign(JSON.parse(JSON.stringify(BASE)),JSON.parse(JSON.stringify(p)));
+  if(S.tech>0)applyTech(S.tech,true);
+  REF=null;$('#btnClr').hidden=true;
+  update();
+}
+function applyTech(n,silent){
+  const t=TECH[n];S.tech=n;
+  for(const k of Object.keys(t)){if(k==='Tt4')S.Tt4=Math.min(S.Tt4,t.Tt4);else S[k]=t[k];}
+  if(!silent)update();
+}
+
+/* ---------- Arranque ---------- */
+buildSliders();buildGas();buildTabs();
+$('#segTl').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{const a=isaOrOv(S),g=S.gas,cl=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+  if(b.dataset.v==='tl'&&!S.tlMode){S.tl=cl(g.cpt*S.Tt4/(g.cpc*a.T),2,14);S.tlMode=true;}
+  else if(b.dataset.v==='tt4'&&S.tlMode){S.Tt4=cl(Math.round(S.tl*g.cpc*a.T/g.cpt/10)*10,1000,2100);S.tlMode=false;}
+  update();}));
+$('#presets').innerHTML=PRESETS.map((p,i)=>`<button type="button" data-i="${i}">${p.n}<small>${p.s}</small></button>`).join('');
+$('#presets').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>applyPreset(+b.dataset.i)));
+$('#segArch').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{S.arch=b.dataset.v;if(S.arch==='turbojet'&&S.M0>2.5)S.M0=2.5;update();}));
+$('#segSpool').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{S.spools=b.dataset.v;update();}));
+$('#segTech').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>applyTech(+b.dataset.v)));
+$('#kindCore').addEventListener('change',e=>{S.kindCore=e.target.value;update();});
+$('#kindFan').addEventListener('change',e=>{S.kindFan=e.target.value;update();});
+$('#btnPlay').addEventListener('click',()=>{playing=!playing;$('#btnPlay').textContent=playing?'Pausar':'Reanudar';});
+$('#btnRef').addEventListener('click',()=>{if(R&&R.ok){REF=R;$('#btnClr').hidden=false;renderTiles();}});
+$('#btnBack').addEventListener('click',()=>{MSCRUB=-1;exitFlightView();if(activeTab==='ms'){drawMissionCharts();updateRead();const sc=$('#msScrub');if(sc)sc.value=0;}});
+$('#btnClr').addEventListener('click',()=>{REF=null;$('#btnClr').hidden=true;renderTiles();});
+if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches){playing=false;$('#btnPlay').textContent='Reanudar';}
+runValidation();
+update();
+requestAnimationFrame(frame);
+new MutationObserver(()=>{tokCache=null;if(R)renderPanel();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{tokCache=null;if(R)renderPanel();});
+})();
+</script>
+<div id="pop" role="dialog" aria-label="Información" hidden></div>
+<div id="tip" hidden></div>
+</body>
+</html>
