@@ -188,13 +188,13 @@ td.ic{padding-left:2px}
 <body>
 <header>
   <h1>Simulador de ciclo de motor</h1>
-  <p>Turbojet y turbofán de escape separado, calculados con las ecuaciones del apunte de On-Design (ref. Mattingly). Mueve los parámetros y mira cómo cambian el ciclo y el flujo.</p>
+  <p>Turbojet y turbofán de escape separado, calculados con el análisis de ciclo on-design (ref. Mattingly). Mueve los parámetros y mira cómo cambian el ciclo y el flujo.</p>
   <span class="chip" id="valChip">Validando…</span>
 </header>
 
 <div class="layout">
   <aside class="card controls" aria-label="Parámetros">
-    <h2>Casos del apunte</h2>
+    <h2>Casos de ejemplo</h2>
     <div class="presets" id="presets"></div>
 
     <h2>Arquitectura</h2>
@@ -236,7 +236,7 @@ td.ic{padding-left:2px}
     <details><summary>Ajuste fino de eficiencias</summary><div id="gEff"></div></details>
     <details id="detGas"><summary>Gas y combustible</summary>
       <div class="sl"><div class="row"><label for="fuelSel">Combustible</label></div>
-        <select id="fuelSel"><option value="">Personalizado</option><option value="42.8">Queroseno (apunte) · 42,8 MJ/kg</option><option value="43.15">Jet A-1 · 43,15 MJ/kg</option><option value="50">Metano / GNL · 50 MJ/kg</option><option value="120">Hidrógeno · 120 MJ/kg</option><option value="26.8">Etanol · 26,8 MJ/kg</option></select></div>
+        <select id="fuelSel"><option value="">Personalizado</option><option value="42.8">Queroseno · 42,8 MJ/kg</option><option value="43.15">Jet A-1 · 43,15 MJ/kg</option><option value="50">Metano / GNL · 50 MJ/kg</option><option value="120">Hidrógeno · 120 MJ/kg</option><option value="26.8">Etanol · 26,8 MJ/kg</option></select></div>
       <div class="gasgrid" id="gGas"></div>
       <button type="button" class="btn" id="btnGasReset" style="margin:8px 0 4px">Restablecer valores por defecto</button>
       <div class="note">γ y c<sub>p</sub> son constantes en cada zona (aire frío antes de la cámara, gas caliente después). Con hidrógeno o metano habría más vapor de agua en los gases y γ<sub>t</sub> y c<sub>pt</sub> serían algo distintos: ajústalos a mano si lo necesitas.</div>
@@ -287,7 +287,7 @@ td.ic{padding-left:2px}
 const $=s=>document.querySelector(s);
 const fmt=(x,d=2)=>(x==null||!isFinite(x))?'–':x.toFixed(d).replace('.',',');
 
-/* ---------- Tabla 3.3 del apunte: niveles tecnológicos ---------- */
+/* ---------- Niveles tecnológicos (Tabla 3.3, ref. Mattingly) ---------- */
 const TECH={
   1:{pidmax:.90,ec:.80,ef:.78,pib:.90,etab:.88,et:.80,pin:.95,pifn:.95,etam:.95,Tt4:1110},
   2:{pidmax:.95,ec:.84,ef:.82,pib:.92,etab:.94,et:.83,pin:.97,pifn:.97,etam:.97,Tt4:1390},
@@ -303,9 +303,9 @@ const BASE={arch:'turbofan',spools:'two',alt:11000,ov:null,M0:0.78,mdot0:420,tlM
   gas:Object.assign({},GAS_DEF),tech:4,
   pidmax:.995,ec:.9,ef:.89,pib:.95,etab:.999,et:.89,pin:.995,pifn:.995,etam:.995};
 const PRESETS=[
- {n:'Ejemplo 1 · Turbojet a Mach 2',s:'Apunte §5.2, 12 km',p:{arch:'turbojet',spools:'single',alt:12000,ov:{T0:216.69,P0:19400},M0:2,mdot0:100,pic:10,Tt4:1800,kindCore:'cd',p0p9:.5,tech:0,
+ {n:'Ejemplo 1 · Turbojet a Mach 2',s:'Ejemplo resuelto, 12 km',p:{arch:'turbojet',spools:'single',alt:12000,ov:{T0:216.69,P0:19400},M0:2,mdot0:100,pic:10,Tt4:1800,kindCore:'cd',p0p9:.5,tech:0,
     pidmax:.95,pib:.94,pin:.96,ec:.9,et:.9,etab:.98,etam:.99,pifn:1,gas:{gc:1.4,cpc:1004,gt:1.3,cpt:1239,hPR:42.8e6}}},
- {n:'Ejemplo 2 · Turbofán α = 8',s:'Apunte §6.1.6, Mach 0,8 a 12 km',p:{arch:'turbofan',spools:'single',alt:12000,ov:{T0:216.69,P0:19400},M0:.8,mdot0:400,pic:36,pif:1.7,alpha:8,Tt4:1666.67,kindCore:'cd',p0p9:.9,kindFan:'cd',p0p19:.9,tech:0,
+ {n:'Ejemplo 2 · Turbofán α = 8',s:'Ejemplo resuelto, Mach 0,8 a 12 km',p:{arch:'turbofan',spools:'single',alt:12000,ov:{T0:216.69,P0:19400},M0:.8,mdot0:400,pic:36,pif:1.7,alpha:8,Tt4:1666.67,kindCore:'cd',p0p9:.9,kindFan:'cd',p0p19:.9,tech:0,
     pidmax:.99,pib:.96,pin:.99,pifn:.99,ec:.9,ef:.89,et:.89,etab:.99,etam:.99,gas:{gc:1.4,cpc:1004.8,gt:1.33,cpt:1155.6,hPR:42.8e6}}},
  {n:'Turbofán civil moderno',s:'2 ejes, α = 11, OPR ≈ 39, toberas adaptadas',p:{}},
  {n:'Turbojet de crucero subsónico',s:'1 eje, π_c = 20, Mach 0,8',p:{arch:'turbojet',spools:'single',alt:11000,M0:.8,mdot0:60,pic:20,Tt4:1600,kindCore:'cd',p0p9:1,tech:4}}
@@ -359,7 +359,7 @@ function syncControls(){
   $('#segSpool').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===S.spools));
   $('#segTech').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.v===S.tech));
   const ov=$('#ovNote');ov.hidden=!S.ov;
-  if(S.ov)ov.textContent=`Atmósfera del apunte: T₀ = ${fmt(S.ov.T0,2)} K, P₀ = ${fmt(S.ov.P0/1000,2)} kPa. Mueve la altitud para volver a ISA.`;
+  if(S.ov)ov.textContent=`Atmósfera del ejemplo: T₀ = ${fmt(S.ov.T0,2)} K, P₀ = ${fmt(S.ov.P0/1000,2)} kPa. Mueve la altitud para volver a ISA.`;
   syncGas();
   $('#segTl').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.v==='tl')===!!S.tlMode));
   {const tn=$('#tlNote');tn.hidden=!S.tlMode;if(S.tlMode){const aa=isaOrOv(S);tn.textContent=`Tt4 resultante = ${fmt(S.tl*S.gas.cpc*aa.T/S.gas.cpt,0)} K con T₀ = ${fmt(aa.T,1)} K.`;}}
@@ -416,7 +416,7 @@ Fsp:()=>['Empuje específico',`<p>Empuje que da el motor por cada kg/s de aire q
 F:()=>['Empuje total',`<p>Empuje neto del motor: específico por caudal de aire, ${eq('F = (F/ṁ₀)·ṁ₀')}. El caudal ṁ₀ es un dato de entrada: solo escala el empuje, las potencias y las áreas; no cambia el ciclo.</p>`+(ok_()?`<p>Ahora: <b>${fmt(R.size.F/1000,1)} kN</b> con ṁ₀ = ${fmt(R.size.m0,0)} kg/s.</p>`:'')],
 tsfc:()=>['Consumo específico (TSFC)',`<p>Combustible que se gasta por cada newton de empuje y segundo: cuanto menos, mejor. Es el parámetro de «economía» del motor.</p><p>${eq('TSFC = f / ((1+α)·F/ṁ₀) = v₀ / (η<sub>O</sub>·h<sub>PR</sub>)')}</p>`+(ok_()?`<p>Ahora: <b>${fmt(R.tsfc*1e6,2)} mg/(N·s)</b> (${fmt(R.tsfc*3600*1000,2)} kg/(kN·h)), con f = ${fmt(R.f,5)}. Los turbofanes civiles actuales están en 14–18 mg/(N·s) en crucero.</p><p>La fórmula de la derecha explica por qué a mayor velocidad de vuelo sube: depende de v₀ y del rendimiento global.</p>`:'')],
 etaT:()=>['Rendimiento térmico η<sub>T</sub>',`<p>Fracción de la energía del combustible que acaba como energía cinética del chorro (aumento de energía cinética de la corriente).</p><p>${eq('η<sub>T</sub> = (1+α)·Δek / (f·h<sub>PR</sub>)')}</p>`+(ok_()?`<p>Ahora: <b>${fmt(R.etaT*100,1)} %</b>. Sube con la relación de compresión y con Tt4 (ciclo Brayton) y baja con las pérdidas de componentes. Un turbofán actual está en 45–55 %.</p>`:'')],
-etaP:()=>['Rendimiento propulsivo η<sub>P</sub>',`<p>Qué parte de esa energía cinética se convierte en trabajo útil de empuje (F·v₀) en vez de perderse en la estela.</p><p>${eq('η<sub>P</sub> = v₀·F / Δek')} ≈ 2/(1 + v₉/v₀) para un solo chorro.</p>`+(ok_()?`<p>Ahora: <b>${fmt(R.etaP*100,1)} %</b>. Baja cuando el chorro es mucho más rápido que el avión; por eso los turbofanes de gran derivación (chorro lento, mucho caudal) son más eficientes que los turbojet. A Mach 0, η<sub>P</sub> = 0 por definición.</p>`+(R.etaP>1?'<p class="warnp">Supera el 100 %: las toberas no están adaptadas y el empuje por presión (P₉−P₀)A₉ entra en F pero no en Δek, según la definición del apunte.</p>':''):'')],
+etaP:()=>['Rendimiento propulsivo η<sub>P</sub>',`<p>Qué parte de esa energía cinética se convierte en trabajo útil de empuje (F·v₀) en vez de perderse en la estela.</p><p>${eq('η<sub>P</sub> = v₀·F / Δek')} ≈ 2/(1 + v₉/v₀) para un solo chorro.</p>`+(ok_()?`<p>Ahora: <b>${fmt(R.etaP*100,1)} %</b>. Baja cuando el chorro es mucho más rápido que el avión; por eso los turbofanes de gran derivación (chorro lento, mucho caudal) son más eficientes que los turbojet. A Mach 0, η<sub>P</sub> = 0 por definición.</p>`+(R.etaP>1?'<p class="warnp">Supera el 100 %: las toberas no están adaptadas y el empuje por presión (P₉−P₀)A₉ entra en F pero no en Δek, con esta definición de η<sub>P</sub>.</p>':''):'')],
 etaO:()=>['Rendimiento global η<sub>O</sub>',`<p>Producto de ambos: de toda la energía del combustible, cuánta se aprovecha realmente para empujar el avión.</p><p>${eq('η<sub>O</sub> = η<sub>T</sub>·η<sub>P</sub> = F·v₀ / (ṁ<sub>f</sub>·h<sub>PR</sub>)')}</p>`+(ok_()?`<p>Ahora: <b>${fmt(R.etaO*100,1)} %</b> (= ${fmt(R.etaT*100,1)} % × ${fmt(R.etaP*100,1)} %). Es la cifra que realmente baja el consumo por kilómetro.</p>`:'')],
 /* ---- vuelo ---- */
 alt:()=>['Altitud (ISA)',`<p>Altitud de vuelo con la atmósfera estándar: T baja 6,5 K por km hasta 11 km (216,65 K) y se mantiene constante por encima. La presión cae de forma exponencial.</p><p>Condiciona T₀ y P₀, que fijan la temperatura de entrada (τ<sub>λ</sub> = c<sub>pt</sub>Tt4/(c<sub>pc</sub>T₀)) y la densidad del aire, y con ella el empuje total.</p>`+(ok_()?`<p>Ahora: T₀ = ${fmt(R.T0,2)} K, P₀ = ${fmt(R.P0/1000,2)} kPa.</p>`:'')],
@@ -429,7 +429,7 @@ pilpc:()=>['π compresor de baja (LPC)',`<p>Compresión del compresor de baja pr
 pihpc:()=>['π compresor de alta (HPC)',`<p>Compresión del compresor de alta presión (el que mueve la turbina de alta). Es el que más sube Tt3 y la presión de la cámara.</p>`+(ok_()?`<p>Ahora: π<sub>HPC</sub> = ${fmt(R.pihpc,1)}, τ<sub>HPC</sub> = ${fmt(R.thpc,3)}; OPR (2→3) = ${fmt(R.pic,1)}.</p>`:'')],
 alpha:()=>['Relación de derivación α',`<p>Cociente entre el caudal que pasa por el bypass y el que pasa por el núcleo: ${eq('α = ṁ<sub>fan</sub>/ṁ<sub>núcleo</sub>')}.</p><p>Más α: más caudal con chorro más lento → mejor η<sub>P</sub> y menos consumo, pero la turbina tiene que mover un fan mayor. Si α es demasiado alto para la Tt4 y π elegidos, la turbina no tiene potencia suficiente y el ciclo deja de ser viable.</p>`+(ok_()&&R.isFan?`<p>Ahora: α = ${fmt(R.alpha,1)}; ṁ<sub>núcleo</sub> = ${fmt(R.size.mc,1)} kg/s, ṁ<sub>bypass</sub> = ${fmt(R.size.ms,1)} kg/s.</p>`:'')],
 Tt4:()=>['Temperatura de entrada a turbina Tt4',`<p>Temperatura total del gas al salir de la cámara y entrar en la turbina. Es el límite tecnológico del motor (materiales y refrigeración, Tabla 3.3: hasta 2000 K en motores actuales).</p><p>Más Tt4 → más empuje específico y más η<sub>T</sub>, pero más consumo de combustible por kg de aire y más desgaste. Está ligada a τ<sub>λ</sub>.</p>`+(ok_()?`<p>Ahora: Tt4 = ${fmt(R.Tt4,0)} K; τ<sub>λ</sub> = ${fmt(R.tl,3)}; f = ${fmt(R.f,5)}.</p>`:'')],
-tl:()=>['τ<sub>λ</sub> (relación de entalpía de remanso)',`<p>Parámetro del apunte que mide cuánto se calienta el gas respecto al ambiente: ${eq('τ<sub>λ</sub> = c<sub>pt</sub>·Tt4 / (c<sub>pc</sub>·T₀)')}.</p><p>Es útil porque permite fijar el «nivel térmico» del ciclo sin depender de la altitud: si cambias la altitud con τ<sub>λ</sub> fijo, la Tt4 se ajusta sola. En este modo el simulador calcula Tt4 a partir de τ<sub>λ</sub>.</p>`+(ok_()?`<p>Ahora: τ<sub>λ</sub> = <b>${fmt(R.tl,3)}</b> → Tt4 = ${fmt(R.Tt4,0)} K.</p>`:'')],
+tl:()=>['τ<sub>λ</sub> (relación de entalpía de remanso)',`<p>Parámetro del análisis de ciclo que mide cuánto se calienta el gas respecto al ambiente: ${eq('τ<sub>λ</sub> = c<sub>pt</sub>·Tt4 / (c<sub>pc</sub>·T₀)')}.</p><p>Es útil porque permite fijar el «nivel térmico» del ciclo sin depender de la altitud: si cambias la altitud con τ<sub>λ</sub> fijo, la Tt4 se ajusta sola. En este modo el simulador calcula Tt4 a partir de τ<sub>λ</sub>.</p>`+(ok_()?`<p>Ahora: τ<sub>λ</sub> = <b>${fmt(R.tl,3)}</b> → Tt4 = ${fmt(R.Tt4,0)} K.</p>`:'')],
 kindNoz:()=>['Tipo de tobera',`<p><b>Convergente-divergente:</b> se fija la relación P₀/P₉ (1 = adaptada: P₉ = P₀) y se calcula el Mach de salida con la presión total disponible.</p><p><b>Convergente:</b> se comprueba si está bloqueada. Si Pt/P₀ supera el valor crítico, M = 1 y la presión de salida es mayor que la ambiente; esa parte del empuje es empuje por presión.</p>`],
 p0p9:()=>['P₀/P₉ (tobera del núcleo)',`<p>Relación entre la presión ambiente y la presión estática a la salida de la tobera convergente-divergente. 1 = tobera adaptada (máximo empuje, sin pérdidas por expansión incompleta). Menor que 1 = el chorro sale a más presión que el ambiente (subexpandido).</p>`+(ok_()?`<p>Ahora: M₉ = ${fmt(R.core.M,3)}, v₉ = ${fmt(R.core.v9,0)} m/s, T₉ = ${fmt(R.core.T9,0)} K.</p>`:'')],
 p0p19:()=>['P₀/P₁₉ (tobera del fan)',`<p>Igual que P₀/P₉, para el chorro frío del fan.</p>`+(ok_()&&R.isFan?`<p>Ahora: M₁₉ = ${fmt(R.fan.M,3)}, v₁₉ = ${fmt(R.fan.v19,0)} m/s.</p>`:'')],
@@ -558,7 +558,7 @@ function tabStations(){
   add('9','Salida de la tobera del núcleo',r.Tt5,r.Pt9,r.core.T9,r.core.P9,r.core.v9,r.core.M,true);
   if(r.isFan)add('19','Salida de la tobera del fan',r.Tt13,r.Pt19,r.fan.T19,r.fan.P19,r.fan.v19,r.fan.M,true);
   return `<table><thead><tr><th>Estación</th><th>T<sub>t</sub> [K]</th><th>P<sub>t</sub> [kPa]</th><th>T [K]</th><th>P [kPa]</th><th>v [m/s]</th><th>M</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>
-  <p class="foot">Las temperaturas y presiones estáticas solo se dan donde el apunte fija el Mach: flujo libre y salidas de tobera. La tabla sigue la numeración de estaciones AS755. Pulsa la «i» de cada fila para ver qué representa y cómo se calcula.</p>`;
+  <p class="foot">Las temperaturas y presiones estáticas solo se dan donde se conoce el Mach: flujo libre y salidas de tobera. La tabla sigue la numeración de estaciones AS755. Pulsa la «i» de cada fila para ver qué representa y cómo se calcula.</p>`;
 }
 function tabComponents(){
   const r=R,rows=[];
@@ -600,7 +600,7 @@ function tabSize(){
   return `<table><thead><tr><th>Estación (eq. 11.4)</th><th>M</th><th>Área [m²]</th><th>Radio de punta [m]</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>
   <p class="foot">Caudales: ṁ₀ = ${fmt(s.m0,0)} kg/s, núcleo ${fmt(s.mc,1)} kg/s, bypass ${fmt(s.ms,1)} kg/s, combustible ${fmt(s.mf,2)} kg/s. Los Mach de diseño de las estaciones 2, 3, 4 y 5 son supuestos (0,5; 0,3; 0,25; 0,45) y las relaciones cubo/punta (0,35; 0,9; 0,85; 0,6; 0,3) son típicas. De aquí sale la forma del corte animado.</p>`;
 }
-/* Validación contra las Tablas 5.2 y 6.2 del apunte */
+/* Validación contra los ejemplos resueltos de referencia */
 const VAL=[
  {n:'Ejemplo 1 · turbojet',p:0,rows:[['τc',r=>r.tc,2.0771],['f',r=>r.f,0.03567],['τt',r=>r.tt,0.8155],['πt',r=>r.pit,0.3746],['M9',r=>r.core.M,2.253],['F/ṁ₀ [N·s/kg]',r=>r.Fsp,807.1],['TSFC [mg/(N·s)]',r=>r.tsfc*1e6,44.20],['ηT [%]',r=>r.etaT*100,41.93],['ηP [%]',r=>r.etaP*100,74.38],['ηO [%]',r=>r.etaO*100,31.19]]},
  {n:'Ejemplo 2 · turbofán',p:1,rows:[['τf',r=>r.tf,1.1857],['τc',r=>r.tc,3.1192],['f',r=>r.f,0.02868],['τt',r=>r.tt,0.5487],['M9',r=>r.core.M,1.393],['M19',r=>r.fan.M,1.154],['F/ṁ₀ [N·s/kg]',r=>r.Fsp,176.75],['TSFC [mg/(N·s)]',r=>r.tsfc*1e6,18.03],['FR',r=>r.FR,3.986],['ηT [%]',r=>r.etaT*100,40.98],['ηP [%]',r=>r.etaP*100,74.67],['ηO [%]',r=>r.etaO*100,30.60]]}
@@ -615,11 +615,11 @@ function runValidation(){
     out.push({n:v.n,rows});
   }
   VALRES={ok,tot,out};
-  const chip=$('#valChip');chip.textContent=`Reproduce ${ok}/${tot} valores del apunte`;chip.className='chip '+(ok===tot?'ok':'bad');
+  const chip=$('#valChip');chip.textContent=`Reproduce ${ok}/${tot} valores de referencia`;chip.className='chip '+(ok===tot?'ok':'bad');
 }
 function tabValidation(){
-  return VALRES.out.map(b=>`<table style="margin-bottom:14px"><thead><tr><th>${b.n}</th><th>Simulador</th><th>Apunte</th><th>Error</th><th></th></tr></thead><tbody>${b.rows.map(x=>`<tr><td>${x.n}</td><td class="n">${fmt(x.c,4)}</td><td class="n">${fmt(x.ref,4)}</td><td class="n">${fmt(x.e*100,2)} %</td><td class="${x.pass?'ok':'bad'}">${x.pass?'✓':'✗'}</td></tr>`).join('')}</tbody></table>`).join('')+
-  '<p class="foot">Se ejecuta al abrir la página con los datos de los ejemplos resueltos (Tablas 5.2 y 6.2). Tolerancia del 1 %. Las diferencias residuales vienen del redondeo del apunte.</p>';
+  return VALRES.out.map(b=>`<table style="margin-bottom:14px"><thead><tr><th>${b.n}</th><th>Simulador</th><th>Referencia</th><th>Error</th><th></th></tr></thead><tbody>${b.rows.map(x=>`<tr><td>${x.n}</td><td class="n">${fmt(x.c,4)}</td><td class="n">${fmt(x.ref,4)}</td><td class="n">${fmt(x.e*100,2)} %</td><td class="${x.pass?'ok':'bad'}">${x.pass?'✓':'✗'}</td></tr>`).join('')}</tbody></table>`).join('')+
+  '<p class="foot">Se ejecuta al abrir la página con los datos de los ejemplos resueltos (Tablas 5.2 y 6.2). Tolerancia del 1 %. Las diferencias residuales vienen del redondeo de los valores de referencia.</p>';
 }
 
 /* Diagrama T–s con puntos interactivos */

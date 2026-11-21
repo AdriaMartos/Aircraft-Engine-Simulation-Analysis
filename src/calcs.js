@@ -237,7 +237,7 @@ const Calcs = (function () {
     st('dek', 'Aumento de energía cinética por kg de aire', isFan ? 'Δe_{k} = ½·((1+f)/(1+α)·v_{9}^{2} + α/(1+α)·v_{19}^{2} − v_{0}^{2})' : 'Δe_{k} = ½·((1+f)·v_{9}^{2} − v_{0}^{2})',
       isFan ? '½·((1+$f$)/(1+$alpha$)·$v9$^{2} + $alpha$/(1+$alpha$)·$v19$^{2} − $v0$^{2})' : '½·((1+$f$)·$v9$^{2} − $v0$^{2})', dek, 'J/kg', R.dek);
     const undefEta = V.dek <= 0 || V.Fsp <= 0;
-    if (undefEta) cur.steps[cur.steps.length - 1].note = 'Δe_k ≤ 0 o F ≤ 0: η_T, η_P y η_O se calculan por completitud, pero con la definición del apunte no tienen sentido físico.';
+    if (undefEta) cur.steps[cur.steps.length - 1].note = 'Δe_k ≤ 0 o F ≤ 0: η_T, η_P y η_O se calculan por completitud, pero con estas definiciones no tienen sentido físico.';
     st('etaT', 'Rendimiento térmico', 'η_{T} = (1+α)·Δe_{k}/(f·h_{PR})', '(1+$alpha$)·$dek$/($f$·$hPR$)', (1 + V.alpha) * V.dek / (V.f * V.hPR), '%', R.etaT, { scale: 100, i: 'etaT' });
     st('etaP', 'Rendimiento propulsivo', 'η_{P} = v_{0}·F/Δe_{k}', '$v0$·$Fsp$/$dek$', V.v0 * V.Fsp / V.dek, '%', R.etaP, { scale: 100, i: 'etaP' });
     st('etaO', 'Rendimiento global', 'η_{O} = η_{T}·η_{P}', '$etaT$·$etaP$', V.etaT * V.etaP, '%', R.etaO, { scale: 100, i: 'etaO' });

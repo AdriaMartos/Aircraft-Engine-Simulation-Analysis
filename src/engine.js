@@ -1,5 +1,5 @@
 /* Motor de cálculo 1D de ciclo para turbojet y turbofán de escape separado.
-   Ecuaciones del apunte "On-Design Aircraft Engine Analysis" (ref. Mattingly):
+   Análisis de ciclo on-design (ref. Mattingly, "Elements of Propulsion"):
    §3 componentes, §4 prestaciones, §5 turbojet, §6.1 turbofán separado, §11 dimensionado. */
 const Engine = (function () {
   const G0 = 9.80665;
@@ -130,7 +130,7 @@ const Engine = (function () {
     if (Fcore < 0 && Fsp > 0) o.warnings.push('El núcleo da empuje negativo: la turbina extrae casi toda la energía del gas (α o π del fan demasiado altos para esta Tt4).');
     if (nc.choked) o.warnings.push('Tobera del núcleo bloqueada (M9 = 1).');
     if (nf && nf.choked) o.warnings.push('Tobera del fan bloqueada (M19 = 1).');
-    if (etaP > 1) o.warnings.push('η_P > 100 %: toberas no adaptadas. El empuje por presión (P₉−P₀)A₉ cuenta en F pero no en ΔEk (definición del apunte).');
+    if (etaP > 1) o.warnings.push('η_P > 100 %: toberas no adaptadas. El empuje por presión (P₉−P₀)A₉ cuenta en F pero no en ΔEk (con esta definición de η_P).');
     if (d.Tt4 > 2000) o.warnings.push('Tt4 por encima del límite de materiales de la Tabla 3.3 (2000 K).');
 
     Object.assign(o, {

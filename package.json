@@ -2,7 +2,7 @@
   "name": "simulador-ciclo-motor",
   "version": "1.0.0",
   "private": true,
-  "description": "Simulador web de ciclo de motores de reacción (turbojet y turbofán) con memoria de cálculo y simulación de vuelo. Aircraft Propulsion Systems, MUEA (ESEIAAT-UPC).",
+  "description": "Simulador web de ciclo de motores de reacción (turbojet y turbofán) con memoria de cálculo y simulación de vuelo.",
   "scripts": {
     "build": "python3 build.py",
     "test": "node tests/validate.js && node tests/mission.js && node tests/calcs.js && node tests/edge.js"

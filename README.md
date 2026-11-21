@@ -13,26 +13,26 @@ Está creada para estudiar y entender mejor cómo funcionan los motores de reacc
 
 ![Vista general del simulador](docs/simulador.png)
 
-> **Qué es riguroso y qué no.** Los números del ciclo de diseño son exactos respecto al apunte. La simulación de vuelo usa un modelo fuera de diseño simplificado (sin mapas de compresor) y la animación es esquemática. Ver [Limitaciones](#16-limitaciones).
+> **Qué es riguroso y qué no.** Los números del ciclo de diseño reproducen los ejemplos resueltos de referencia (Mattingly). La simulación de vuelo usa un modelo fuera de diseño simplificado (sin mapas de compresor) y la animación es esquemática. Ver [Limitaciones](#16-limitaciones).
 
 ---
 
 ## Índice
 
-1. [Guía rápida para el equipo](#1-guía-rápida-para-el-equipo)
+1. [Guía rápida](#1-guía-rápida)
 2. [Qué hay en pantalla](#2-qué-hay-en-pantalla)
 3. [Parámetros del motor](#3-parámetros-del-motor)
 4. [Gas, combustible y τλ](#4-gas-combustible-y-τλ)
 5. [Resultados: tarjetas y pestañas](#5-resultados-tarjetas-y-pestañas)
 6. [Memoria de cálculo](#6-memoria-de-cálculo)
 7. [Simulación de vuelo (misión)](#7-simulación-de-vuelo-misión)
-8. [Casos del apunte (presets)](#8-casos-del-apunte-presets)
+8. [Casos de ejemplo (presets)](#8-casos-de-ejemplo-presets)
 9. [Modelo de cálculo del ciclo](#9-modelo-de-cálculo-del-ciclo)
 10. [Modelo fuera de diseño](#10-modelo-fuera-de-diseño)
 11. [Casos críticos: errores](#11-casos-críticos-errores)
 12. [Casos críticos: avisos](#12-casos-críticos-avisos)
 13. [Situaciones que conviene conocer](#13-situaciones-que-conviene-conocer)
-14. [Cómo usarlo para el proyecto](#14-cómo-usarlo-para-el-proyecto)
+14. [Cómo sacarle partido](#14-cómo-sacarle-partido)
 15. [Validación y pruebas](#15-validación-y-pruebas)
 16. [Limitaciones](#16-limitaciones)
 17. [Trabajar con el repositorio](#17-trabajar-con-el-repositorio)
@@ -41,14 +41,14 @@ Está creada para estudiar y entender mejor cómo funcionan los motores de reacc
 
 ---
 
-## 1. Guía rápida para el equipo
+## 1. Guía rápida
 
 1. Abre la web (enlace de arriba). Funciona en ordenador, tablet y móvil, con tema claro u oscuro según el sistema.
-2. Arranca con un **turbofán civil moderno** (2 ejes, α = 11, OPR ≈ 39, Mach 0,78 a 11 km). Si quieres partir de los ejemplos del apunte, pulsa un caso en **Casos del apunte**.
+2. Arranca con un **turbofán civil moderno** (2 ejes, α = 11, OPR ≈ 39, Mach 0,78 a 11 km). Si quieres partir de los ejemplos resueltos, pulsa un caso en **Casos de ejemplo**.
 3. Mueve cualquier deslizador del panel izquierdo: todo se recalcula al instante.
 4. Pulsa la **«i»** de cualquier parámetro, tarjeta o fila para ver qué significa, su fórmula y el valor actual explicado.
 5. Para estudiar el efecto de un parámetro: pulsa **Fijar referencia**, cambia el parámetro y las tarjetas mostrarán la diferencia en % respecto a la referencia.
-6. En la pestaña **Cálculos** tienes todo el desarrollo con números. **Copiar como texto** o **Descargar .txt** lo exportan para el informe.
+6. En la pestaña **Cálculos** tienes todo el desarrollo con números. **Copiar como texto** o **Descargar .txt** lo exportan.
 7. En **Vuelo (misión)** pulsa **Calcular vuelo** para volar ese motor en un avión de 2 motores tipo fuselaje ancho.
 
 > El estado **no se guarda** al recargar la página. Si quieres conservar un caso, apunta los parámetros o exporta la memoria de cálculo, que lleva todos los datos de entrada.
@@ -59,8 +59,8 @@ Está creada para estudiar y entender mejor cómo funcionan los motores de reacc
 
 | Zona | Contenido |
 |---|---|
-| **Cabecera** | Chip verde «Reproduce 22/22 valores del apunte»: al abrir la página se recalculan los ejemplos del apunte y se comparan (ver pestaña *Validación*). |
-| **Panel izquierdo** | Casos del apunte, arquitectura, vuelo, ciclo, toberas, nivel tecnológico, ajuste fino de eficiencias y gas/combustible. |
+| **Cabecera** | Chip verde «Reproduce 22/22 valores de referencia»: al abrir la página se recalculan los ejemplos resueltos y se comparan (ver pestaña *Validación*). |
+| **Panel izquierdo** | Casos de ejemplo, arquitectura, vuelo, ciclo, toberas, nivel tecnológico, ajuste fino de eficiencias y gas/combustible. |
 | **Corte animado** | Motor con las estaciones (0, 2, 13, 25, 3, 4, 45, 5, 9, 19), Tt4, Mach de salida de las toberas y velocidad de vuelo v₀. Botones *Pausar* y *Fijar referencia*. |
 | **Chips de estado** | Verde «Ciclo consistente», amarillo para avisos y rojo cuando el ciclo no es viable (secciones [11](#11-casos-críticos-errores) y [12](#12-casos-críticos-avisos)). |
 | **Seis tarjetas** | Empuje específico, empuje total, TSFC, η térmico, η propulsivo y η global. |
@@ -83,7 +83,7 @@ Está creada para estudiar y entender mejor cómo funcionan los motores de reacc
 
 | Parámetro | Símbolo | Rango | Por defecto | Notas |
 |---|---|---|---|---|
-| Altitud | h | 0 – 15 000 m | 11 000 m | Atmósfera ISA. Los casos del apunte imponen sus T₀ y P₀; mover la altitud vuelve a ISA. |
+| Altitud | h | 0 – 15 000 m | 11 000 m | Atmósfera ISA. Los dos ejemplos resueltos imponen sus T₀ y P₀; mover la altitud vuelve a ISA. |
 | Mach de vuelo | M₀ | 0 – 1 (turbofán) · 0 – 2,5 (turbojet) | 0,78 | Al pasar a turbofán con M₀ > 1 se recorta a 1. |
 | Caudal de aire | ṁ₀ | 10 – 1500 kg/s | 420 kg/s | Solo escala empuje total, potencias y áreas. No cambia ningún valor específico (F/ṁ₀, TSFC, η). |
 | π compresor (1 eje) | π_c | 2 – 60 | 36 | Compresión total 2→3. Con turbofán de 1 eje incluye el fan. |
@@ -103,7 +103,7 @@ Está creada para estudiar y entender mejor cómo funcionan los motores de reacc
 | Tobera del fan | Convergente-divergente / Convergente | Conv.-div. | Solo turbofán. |
 | P₀/P₁₉ (fan) | 0,2 – 1 | 1 (adaptada) | Solo conv.-div. |
 
-### Componentes: nivel tecnológico (Tabla 3.3 del apunte)
+### Componentes: nivel tecnológico (Tabla 3.3, ref. Mattingly)
 
 Los botones **N1 – N4** rellenan de golpe todas las eficiencias y pérdidas. Si la Tt4 actual supera el máximo del nivel, se baja a ese máximo.
 
@@ -139,7 +139,7 @@ Desplegable **Gas y combustible** del panel izquierdo:
 | c_p gas caliente (c_pt) | 1000 – 1500 J/(kg·K) | 1155,6 |
 | h_PR | 10 – 125 MJ/kg | 42,8 |
 
-- **Combustible:** el selector rellena h_PR con queroseno del apunte (42,8 MJ/kg), Jet A-1 (43,15), metano/GNL (50), hidrógeno (120) o etanol (26,8). Si escribes otro valor, el selector pasa a «Personalizado».
+- **Combustible:** el selector rellena h_PR con queroseno (42,8 MJ/kg), Jet A-1 (43,15), metano/GNL (50), hidrógeno (120) o etanol (26,8). Si escribes otro valor, el selector pasa a «Personalizado».
 - Un valor fuera de rango pone el campo en rojo y **no se aplica**. «Restablecer valores por defecto» vuelve a la tabla.
 - Las constantes de gas se calculan con R = (γ−1)/γ · c_p.
 - Con hidrógeno o metano, los gases de escape llevan más vapor de agua y γ_t y c_pt cambian algo. El simulador no los ajusta solo: cámbialos tú si necesitas precisión.
@@ -173,7 +173,7 @@ Con una referencia fijada, cada tarjeta muestra la variación en % (▲ verde si
 | **Potencias** | Trabajo específico (kJ/kg de aire del núcleo) y potencia (MW) de fan, compresores y turbinas: comprueba visualmente el balance de potencias. |
 | **Dimensionado** | Área, Mach y radio de punta de cada estación; caudales de núcleo, bypass y combustible. |
 | **Cálculos** | Memoria de cálculo completa ([sección 6](#6-memoria-de-cálculo)). |
-| **Validación** | 22 valores del simulador frente a las Tablas 5.2 y 6.2 del apunte, con su error. |
+| **Validación** | 22 valores del simulador frente a los ejemplos resueltos de referencia, con su error. |
 | **Vuelo (misión)** | Simulación de vuelo ([sección 7](#7-simulación-de-vuelo-misión)). |
 
 ---
@@ -272,16 +272,16 @@ Entre dos puntos, la altitud y el Mach varían linealmente. En cada tramo se cal
 
 ---
 
-## 8. Casos del apunte (presets)
+## 8. Casos de ejemplo (presets)
 
 | Caso | Datos |
 |---|---|
-| **Ejemplo 1 · Turbojet a Mach 2** | Apunte §5.2. 12 km (T₀ = 216,69 K, P₀ = 19,40 kPa), M₀ = 2, π_c = 10, Tt4 = 1800 K, tobera conv.-div. con P₀/P₉ = 0,5. Gas: c_pc = 1004, γ_t = 1,3, c_pt = 1239. Eficiencias del enunciado. |
-| **Ejemplo 2 · Turbofán α = 8** | Apunte §6.1.6. M₀ = 0,8 a 12 km, 1 eje, π_c = 36, π_f = 1,7, Tt4 = 1666,67 K, P₀/P₉ = P₀/P₁₉ = 0,9. Eficiencias del enunciado. |
+| **Ejemplo 1 · Turbojet a Mach 2** | Ejemplo resuelto. 12 km (T₀ = 216,69 K, P₀ = 19,40 kPa), M₀ = 2, π_c = 10, Tt4 = 1800 K, tobera conv.-div. con P₀/P₉ = 0,5. Gas: c_pc = 1004, γ_t = 1,3, c_pt = 1239. Eficiencias del enunciado. |
+| **Ejemplo 2 · Turbofán α = 8** | Ejemplo resuelto. M₀ = 0,8 a 12 km, 1 eje, π_c = 36, π_f = 1,7, Tt4 = 1666,67 K, P₀/P₉ = P₀/P₁₉ = 0,9. Eficiencias del enunciado. |
 | **Turbofán civil moderno** (por defecto) | 2 ejes, α = 11, π_f = 1,5, π_LPC = 1,8, π_HPC = 14,5 (OPR ≈ 39), Tt4 = 1700 K, M₀ = 0,78 a 11 km, toberas adaptadas, N4, ṁ₀ = 420 kg/s. |
 | **Turbojet de crucero subsónico** | 1 eje, π_c = 20, Tt4 = 1600 K, M₀ = 0,8 a 11 km, tobera adaptada, N4, ṁ₀ = 60 kg/s. |
 
-Los dos primeros reproducen las tablas del apunte. Los otros dos son casos genéricos, **no** un motor comercial concreto.
+Los dos primeros reproducen ejemplos resueltos de referencia (Mattingly). Los otros dos son casos genéricos, **no** un motor comercial concreto.
 
 ---
 
@@ -356,7 +356,7 @@ El cálculo sigue, pero el resultado necesita interpretación (chip amarillo):
 | Aviso | Significado |
 |---|---|
 | *Tobera del núcleo bloqueada (M₉ = 1)* / *del fan (M₁₉ = 1)* | Solo toberas convergentes. La salida queda a P > P₀ y parte del empuje es de presión. |
-| *η_P > 100 %* | Toberas no adaptadas. El término de presión (P₉ − P₀)A₉ entra en F pero no en Δe_k, así que con la definición del apunte η_P puede superar 1. **No es un error del programa.** Para comparar rendimientos usa toberas adaptadas (P₀/P₉ = 1). |
+| *η_P > 100 %* | Toberas no adaptadas. El término de presión (P₉ − P₀)A₉ entra en F pero no en Δe_k, así que con esta definición η_P puede superar 1. **No es un error del programa.** Para comparar rendimientos usa toberas adaptadas (P₀/P₉ = 1). |
 | *Δe_k ≤ 0: … η_T, η_P y η_O no están definidos.* | Con toberas muy subexpandidas o un fan lento, el chorro sale con menos energía cinética que el aire de entrada, aunque haya empuje por presión. Las tarjetas de rendimiento muestran «–». |
 | *Empuje específico ≤ 0…* | El motor no da empuje. TSFC y rendimientos no tienen sentido y se muestran como «–». |
 | *El fan da empuje negativo…* | El chorro frío sale más lento que el vuelo: el fan frena. Sube π_f o baja el Mach. |
@@ -381,7 +381,7 @@ El cálculo sigue, pero el resultado necesita interpretación (chip amarillo):
 - **Cambiar la altitud en el panel no es «el mismo motor a otra altitud».** El panel es on-design: cada cambio **rediseña** el motor en esas condiciones. Para ver el *mismo* motor a otra altitud o velocidad, usa la simulación de vuelo y la barra de posición.
 - **ṁ₀ no cambia el ciclo:** solo escala el empuje total, las potencias y las áreas.
 - **Turbofán limitado a M₀ ≤ 1** y turbojet a M₀ ≤ 2,5. No se modelan ondas de choque en la toma más allá de η_r ni la inestabilidad de toma.
-- **Cargar un caso del apunte y mover la altitud:** se abandonan T₀ y P₀ del apunte y se pasa a ISA.
+- **Cargar un ejemplo resuelto y mover la altitud:** se abandonan sus T₀ y P₀ y se pasa a ISA.
 - **Nivel tecnológico:** al pulsar N1–N4 se sobrescriben las eficiencias que hayas ajustado a mano.
 - **Combustibles alternativos:** cambiar h_PR no cambia γ_t ni c_pt automáticamente (ver [sección 4](#4-gas-combustible-y-τλ)).
 - **Descargar .txt dentro de claude.ai:** el visor pide confirmación antes de descargar. En GitHub Pages descarga directamente.
@@ -389,16 +389,16 @@ El cálculo sigue, pero el resultado necesita interpretación (chip amarillo):
 
 ---
 
-## 14. Cómo usarlo para el proyecto
+## 14. Cómo sacarle partido
 
 - **Estudios paramétricos:** fija una referencia, cambia un solo parámetro (α, π_f, OPR o Tt4) y lee el % de variación en las tarjetas. Las tendencias que da el simulador son las esperables:
   - al subir α baja F/ṁ₀ y baja el TSFC,
   - al subir Tt4 suben F/ṁ₀, η_T y el TSFC,
   - al subir el OPR baja el TSFC,
   - al subir M₀ suben el TSFC y η_P.
-- **Comprobar cálculos a mano:** la pestaña *Cálculos* da cada paso con números; sirve para revisar la memoria del informe.
-- **Comparar con un motor real:** introduce α, OPR y el caudal del motor (por ejemplo, de la base de datos de emisiones de la ICAO). Tt4 y las eficiencias no son públicas: hay que estimarlas, y conviene justificar esa estimación en el informe.
-- **Impacto en la misión:** compara el combustible de la misión entre dos diseños del motor con el mismo avión. Desmarca la masa automática y pon la misma masa en los dos casos para que la comparación sea justa.
+- **Repasar la teoría con números:** la pestaña *Cálculos* desarrolla cada ecuación con los valores actuales, útil para seguir el ciclo paso a paso o comprobar un cálculo a mano.
+- **Aproximar un motor real:** introduce su α, OPR y caudal. Tt4 y las eficiencias no suelen ser públicas, así que hay que estimarlas.
+- **Ver el efecto en el vuelo:** compara el combustible de la misión entre dos diseños del motor con el mismo avión. Desmarca la masa automática y pon la misma masa en los dos casos para que la comparación sea justa.
 
 ---
 
@@ -406,11 +406,11 @@ El cálculo sigue, pero el resultado necesita interpretación (chip amarillo):
 
 | Prueba | Qué comprueba | Resultado |
 |---|---|---|
-| `tests/validate.js` | Solver frente a las Tablas 5.2 (turbojet) y 6.2 (turbofán) del apunte: τ_r, π_r, π_d, τ_c, τ_f, τλ, f, τ_t, π_t, M₉, M₁₉, F/ṁ₀, TSFC, η_T, η_P, η_O. | 28/28 dentro de tolerancia (error máx. ≈ 0,08 %) |
+| `tests/validate.js` | Solver frente a los ejemplos resueltos de referencia (turbojet y turbofán): τ_r, π_r, π_d, τ_c, τ_f, τλ, f, τ_t, π_t, M₉, M₁₉, F/ṁ₀, TSFC, η_T, η_P, η_O. | 28/28 dentro de tolerancia (error máx. ≈ 0,08 %) |
 | `tests/mission.js` | Fuera de diseño = diseño en el punto de diseño; empuje estático plausible; misión ideal, cruise-climb y manual; T = D en crucero; masa monótona; aviso de ascenso imposible. | 14/14 |
 | `tests/calcs.js` | Cada paso de la memoria de cálculo coincide con el solver en 39 casos: turbojet y turbofán, 1 y 2 ejes, toberas conv. y conv.-div., M₀ de 0 a 2, más 3 puntos fuera de diseño. | 2257 pasos, todos coinciden |
 | `tests/edge.js` | Cada error y aviso de las secciones 11 y 12 aparece cuando toca. | 13/13 |
-| Pestaña *Validación* | Los 22 valores principales del apunte, recalculados al abrir la página. | 22/22 |
+| Pestaña *Validación* | Los 22 valores principales de los ejemplos, recalculados al abrir la página. | 22/22 |
 
 Durante la revisión también se hicieron barridos que no forman parte de los tests:
 
@@ -453,7 +453,7 @@ GitHub ejecuta estas pruebas automáticamente en cada *push* y *pull request* (`
 │   ├── calcs.js               Memoria de cálculo (fórmula, sustitución y resultado)
 │   └── template.html          Interfaz, estilos, textos de ayuda «i», dibujo y animación
 ├── tests/
-│   ├── validate.js            Solver frente al apunte
+│   ├── validate.js            Solver frente a los ejemplos resueltos
 │   ├── mission.js             Fuera de diseño y misión
 │   ├── calcs.js               Memoria de cálculo frente al solver
 │   └── edge.js                Casos críticos (errores y avisos)
@@ -480,7 +480,7 @@ git add -A && git commit -m "Describe el cambio"
 git push
 ```
 
-Para cambios grandes, mejor crear una rama y abrir un *pull request*: así el resto del equipo puede revisarlo y las pruebas automáticas se ejecutan antes de fusionar.
+Para cambios grandes, mejor crear una rama y abrir un *pull request*: así otras personas pueden revisarlo y las pruebas automáticas se ejecutan antes de fusionar.
 
 **Dónde tocar cada cosa:**
 
@@ -491,7 +491,7 @@ Para cambios grandes, mejor crear una rama y abrir un *pull request*: así el re
 | Un texto de ayuda «i» | `src/template.html`, objeto `INFO` |
 | Rangos o valores por defecto de los deslizadores | `src/template.html`, `BASE`, `SL` y `PRESETS` |
 | Valores por defecto de la misión | `src/template.html`, `MSDEF` y `MF_*` |
-| Un caso del apunte nuevo | `src/template.html`, `PRESETS` (y su validación en `VAL` si tiene tabla en el apunte) |
+| Un caso de ejemplo nuevo | `src/template.html`, `PRESETS` (y su validación en `VAL` si tiene valores de referencia) |
 
 ### Publicación (GitHub Pages)
 
@@ -536,4 +536,4 @@ const r = Engine.solve({
 
 ---
 
-*Proyecto académico para la asignatura Aircraft Propulsion Systems (220308), MUEA, ESEIAAT-UPC. Licencia MIT (ver [LICENSE](LICENSE)).*
+*Licencia MIT (ver [LICENSE](LICENSE)).*
