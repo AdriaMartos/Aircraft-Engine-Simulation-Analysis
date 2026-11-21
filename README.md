@@ -9,7 +9,7 @@ Aplicación web para estudiar el ciclo de los motores de reacción. Eliges el mo
 - todos los **cálculos del ciclo**: estaciones, componentes, diagrama T–s, potencias, dimensionado y una **memoria de cálculo** con cada ecuación sustituida,
 - una **simulación de vuelo** completa (ascenso, crucero y descenso) con el motor trabajando fuera de diseño.
 
-Hecha para la asignatura *Aircraft Propulsion Systems* (MUEA, ESEIAAT-UPC). Las ecuaciones son las del apunte *On-Design Aircraft Engine Analysis* (referencia: Mattingly) y el simulador **reproduce los ejemplos resueltos del apunte** (Tablas 5.2 y 6.2). No necesita instalación ni servidor: es un único `index.html`.
+Está creada para estudiar y entender mejor cómo funcionan los motores de reacción.
 
 ![Vista general del simulador](docs/simulador.png)
 
