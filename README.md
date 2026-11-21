@@ -278,15 +278,32 @@ Entre dos puntos, la altitud y el Mach varían linealmente. En cada tramo se cal
 
 Arriba a la derecha, el selector **Explorar el ciclo / Analizar un motor** cambia de modo. El modo de análisis es un recorrido por pasos para estudiar un turbofán real de 2 ejes. Cada paso empieza con un desplegable **«Qué se hace en este paso y por qué»** que explica la teoría con las ecuaciones que se usan.
 
-| Paso | Estado | Contenido |
-|---|---|---|
-| 1 · Datos del motor | Disponible | Crucero (h₀, M₀), α, OPR, π_f, Tt4, combustible, eficiencias, toberas, gas y **mapa del compresor de alta**. Junto a cada dato hay un campo **«Fuente o supuesto»** para anotar de dónde sale. |
-| 2 · Punto de diseño | Disponible | Ciclo resuelto en crucero: F, F/ṁ₀, TSFC, η_T, η_P, η_O; estaciones, componentes, potencias, T–s y memoria de cálculo exportable. Botón para abrir el motor en el explorador (animación y misión). |
-| 3 · Mapas de calor | En construcción | F, TSFC y rendimientos variando π_LPC y π_HPC, con dos escenarios: ṁ_core y η_HPC fijos, o siguiendo la línea de operación del mapa. |
-| 4 · Compresor de alta | En construcción | Etapas repetidas, número de etapas y triángulos de velocidades. |
-| 5 · Turbina de alta | En construcción | Una etapa con velocidad axial constante y salida sin giro; triángulos de velocidades. |
-| 6 · Fuera de diseño | En construcción | El mismo motor a nivel del mar y Mach 0 (turbinas bloqueadas, α variable). |
-| 7 · Resumen | En construcción | Tablas de datos (con fuentes) y de resultados. |
+| Paso | Contenido |
+|---|---|
+| 1 · Datos del motor | Crucero (h₀, M₀), α, OPR, π_f, Tt4, combustible, eficiencias, toberas, gas y **mapa del compresor de alta**. Junto a cada dato hay un campo **«Fuente o supuesto»** para anotar de dónde sale. |
+| 2 · Punto de diseño | Ciclo resuelto en crucero: F, F/ṁ₀, TSFC, η_T, η_P, η_O; estaciones, componentes, potencias, T–s y memoria de cálculo exportable. Botón para abrir el motor en el explorador (animación y misión). |
+| 3 · Mapas de calor | F, TSFC, η_T, η_P, η_O, F/ṁ₀ o ṁ₀ en una rejilla π_LPC × π_HPC, con el punto de diseño marcado y dos escenarios: (i) ṁ_core y η_HPC fijos; (ii) ṁ_c,25 y η_HPC siguiendo la línea de operación del mapa. Escala de color por mapa o compartida, valores al pasar el cursor y descarga en .csv. |
+| 4 · Compresor de alta | Etapas repetidas (*repeating-row, repeating-stage*): α₂, U, Ψ, Φ, π y τ por etapa, número de etapas, régimen de giro, áreas y alturas de álabe. Triángulos de velocidades dibujados, figura de diseño recalculada y tabla etapa a etapa. |
+| 5 · Turbina de alta | Una etapa, velocidad axial constante y salida sin giro: U necesaria, R_t, α₂, β₂, β₃, Mach y radio medio (mismo eje que el HPC). Comprobaciones α₂ ≤ 70°, M₂ > 1 y M₃R < 0,9. Triángulos y figura de diseño (Ψ/Φ y R_t/Φ). |
+| 6 · Fuera de diseño | El mismo motor en otra condición (por defecto nivel del mar y M₀ = 0): iteración con turbinas bloqueadas y α variable. Comparación con el diseño, punto del HPC sobre su mapa y tabla de convergencia. |
+| 7 · Resumen | Tablas de datos (con fuentes) y de resultados de todos los pasos, para copiar (separadas por tabuladores) o descargar en .csv. |
+
+**Supuestos por defecto de los pasos 3–6.** Son genéricos y se pueden cambiar en cada paso:
+
+| Paso | Supuesto por defecto |
+|---|---|
+| 3 | π_LPC entre 1,2 y 6; π_HPC en todo el rango de la línea de operación (1,54–6,90); 31 × 31 puntos. |
+| 4 | M₁ = 0,5, α₁ = 30°, D = 0,5, σ = 1, radio medio 0,30 m; e_c equivalente a la η_HPC del mapa (eq. 3.26), así que las N etapas dan exactamente π_HPC. La figura de diseño del enunciado corresponde a D = 0,5, σ = 1 y e_c = 0,9: recalculada con las ecuaciones coincide con ella (α₁ = 0 → α₂ = 36,87°, π de etapa 1,064 a M₁ = 0,3, ωr/V₁ = 0,75). |
+| 5 | Ψ = 1,6 (R_t = 0,2) y Φ = 0,65. |
+| 6 | Nivel del mar, M₀ = 0, Tt4 = la de diseño + 100 K. τ_tH constante, toberas con garganta de área fija, reparto de potencia fan/LPC constante (*constant power split*). La η_HPC se mantiene en su valor de diseño. |
+
+**Fuera de diseño, cómo se resuelve.** Las incógnitas son τ_f, τ_LPC, τ_tL, α y los Mach de las gargantas de las toberas. Se parte de los valores de diseño y se itera con:
+- ṁ_core(1+f)√Tt4/P_t4 = cte (HPT bloqueada);
+- π_tL·MFP(M₈)/√τ_tL = cte (tobera del núcleo);
+- α = α_D·(P_t19/P_t4)/(P_t19/P_t4)_D·√[(Tt4/Tt19)/(Tt4/Tt19)_D]·MFP(M₁₉)/MFP_D;
+- los balances de potencia de los dos ejes.
+
+En la propia condición de diseño, el resultado coincide exactamente con el punto de diseño (comprobado en los tests). A M₀ = 0, η_P y η_O valen 0 por definición.
 
 **Cómo se obtienen π_LPC y el caudal.**
 - El HPC sale de su mapa: el punto de diseño da π_HPC, la eficiencia **isentrópica** η_HPC y el caudal corregido ṁ_c,25.
@@ -448,7 +465,7 @@ El cálculo sigue, pero el resultado necesita interpretación (chip amarillo):
 | `tests/mission.js` | Fuera de diseño = diseño en el punto de diseño; empuje estático plausible; misión ideal, cruise-climb y manual; T = D en crucero; masa monótona; aviso de ascenso imposible. | 14/14 |
 | `tests/calcs.js` | Cada paso de la memoria de cálculo coincide con el solver en 39 casos: turbojet y turbofán, 1 y 2 ejes, toberas conv. y conv.-div., M₀ de 0 a 2, más 3 puntos fuera de diseño. | 2257 pasos, todos coinciden |
 | `tests/edge.js` | Cada error y aviso de las secciones 11 y 12 aparece cuando toca. | 13/13 |
-| `tests/analysis.js` | Mapa del HPC (punto de diseño sobre la línea, η), π_f·π_LPC·π_HPC = OPR, T_t25 y P_t25 iguales al solver, ṁ_c recuperado, η_HPC isentrópica, avisos. | 15/15 |
+| `tests/analysis.js` | Mapa del HPC, π_f·π_LPC·π_HPC = OPR, T_t25 y P_t25 iguales al solver, ṁ_c recuperado, η_HPC isentrópica; mapas de calor (la celda de diseño reproduce el diseño); figura de diseño del HPC; U = v₁ + v₂ y producto de etapas = π_HPC; Euler en la HPT; fuera de diseño = diseño en la condición de diseño y convergencia a nivel del mar. | 31/31 |
 | Pestaña *Validación* | Los 22 valores principales de los ejemplos, recalculados al abrir la página. | 22/22 |
 
 Durante la revisión también se hicieron barridos que no forman parte de los tests:
@@ -490,7 +507,7 @@ GitHub ejecuta estas pruebas automáticamente en cada *push* y *pull request* (`
 │   ├── engine.js              Solver del ciclo y modelo fuera de diseño (navegador y Node)
 │   ├── mission.js             Avión, atmósfera e integrador de la misión
 │   ├── calcs.js               Memoria de cálculo (fórmula, sustitución y resultado)
-│   ├── analysis.js            Modo «Analizar un motor»: mapa del HPC digitalizado y datos → punto de diseño
+│   ├── analysis.js            Modo «Analizar un motor»: mapa del HPC, punto de diseño, mapas de calor, HPC, HPT y fuera de diseño
 │   ├── analysis_ui.js         Interfaz del modo de análisis (pasos, campos, mapa)
 │   └── template.html          Interfaz, estilos, textos de ayuda «i», dibujo y animación
 ├── tests/

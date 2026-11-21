@@ -251,6 +251,52 @@ label.btn{display:inline-block}
 .an-sheet .intro{margin:0 12px 6px;font-size:12px;color:var(--muted)}
 .an-next{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.an-f2{grid-template-columns:minmax(0,1.4fr) minmax(90px,1fr)}
+.an-f2 select{grid-column:auto}
+.an-hmctl{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0 18px}
+.an-hms{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.an-hm h4{margin:4px 0;font:600 13px var(--f-body)}
+.an-hm svg{width:100%;height:auto;display:block}
+.an-hm svg .tk,.an-plot .tk{fill:var(--muted);font:11px var(--f-mono)}
+.an-hm svg .ax,.an-plot .ax{fill:var(--muted);font:12px var(--f-body)}
+.an-hm svg .hbg{fill:var(--bg)}
+.an-hm svg .hln{stroke:var(--line);stroke-width:2}
+.an-hm svg .hmdp{fill:none;stroke:var(--panel);stroke-width:4}
+.an-hm svg .hmdp+.hmdp2{fill:var(--panel)}
+.an-hm svg circle.hmdp{stroke:var(--s2);stroke-width:2.5;paint-order:stroke}
+.an-hm svg .hmhl{fill:none;stroke:var(--ink);stroke-width:1.5}
+.an-cbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:2px 0 10px;font-size:12px}
+.an-cbar .bar{width:180px;height:10px;border-radius:3px}
+.an-cbar .note{margin:0}
+.an-plot{width:100%;height:auto;display:block}
+.an-plot .gr{stroke:var(--grid);stroke-width:1}
+.an-plot .ln1{stroke:var(--s1);stroke-width:2}
+.an-plot .ln2{stroke:var(--ink);stroke-width:2;stroke-dasharray:6 4}
+.an-plot .ln3{stroke:var(--s3);stroke-width:1.6;stroke-dasharray:5 4}
+.an-plot .ln4{stroke:var(--s4);stroke-width:1.6}
+.an-plot .sq0{stroke:#86b6ef}.an-plot .sq1{stroke:#5598e7}.an-plot .sq2{stroke:#2a78d6}.an-plot .sq3{stroke:#1c5cab}.an-plot .sq4{stroke:#104281}
+:root[data-theme="dark"] .an-plot .sq0{stroke:#cde2fb}:root[data-theme="dark"] .an-plot .sq1{stroke:#9ec5f4}:root[data-theme="dark"] .an-plot .sq2{stroke:#6da7ec}:root[data-theme="dark"] .an-plot .sq3{stroke:#3987e5}:root[data-theme="dark"] .an-plot .sq4{stroke:#2a78d6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .an-plot .sq0{stroke:#cde2fb}:root:not([data-theme="light"]) .an-plot .sq1{stroke:#9ec5f4}:root:not([data-theme="light"]) .an-plot .sq2{stroke:#6da7ec}:root:not([data-theme="light"]) .an-plot .sq3{stroke:#3987e5}:root:not([data-theme="light"]) .an-plot .sq4{stroke:#2a78d6}}
+.an-plot .dp{fill:var(--panel);stroke:var(--s2);stroke-width:2.5}
+.an-plot .dp2{fill:var(--s2);stroke:var(--panel);stroke-width:2}
+.an-plot .lab{fill:var(--ink);font:500 11px var(--f-body)}
+.an-plot .sl{font-size:10.5px}
+.an-f input[type=checkbox]{width:auto;padding:0;margin:0 6px 0 0;vertical-align:-2px}
+.an-stack{display:grid;gap:12px}
+.an-stack .an-tri{max-width:820px}
+.an-stack .an-plot:not(.an-tri){max-width:760px}
+.an-wsel{grid-template-columns:minmax(0,.7fr) minmax(0,1.6fr)}
+.an-2plots{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:10px;align-items:end}
+@media (max-width:700px){.an-2plots{grid-template-columns:minmax(0,1fr)}}
+.an-tri .vc{stroke-width:2.2}
+.an-tri .vc.v1{stroke:var(--s1)}.an-tri .vc.v2{stroke:var(--s2)}.an-tri .vc.v3{stroke:var(--ink)}
+.an-tri .mk1{fill:var(--s1)}.an-tri .mk2{fill:var(--s2)}.an-tri .mk3{fill:var(--ink)}
+.an-tri .vl{fill:var(--ink);font-size:10.5px}
+.an-legend .ln.dash{height:0;border-top:2px dashed;background:none!important}
+.an-checks{list-style:none;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px}
+.an-checks .okc{color:var(--good)}.an-checks .badc{color:var(--bad)}
+.an-checks li span{font-weight:700}
+td.miss{color:var(--warn)}
 </style>
 </head>
 <body>
@@ -1210,7 +1256,8 @@ const Analysis = (function () {
     hpc: { mc: HPC_MAP.design.mc, pi: HPC_MAP.design.pi, eta: HPC_MAP.design.eta },
     ref: { T: HPC_MAP.ref.T, P: HPC_MAP.ref.P },
     nozzle: { kindCore: 'cd', p0p9: 1, kindFan: 'cd', p0p19: 1 },
-    src: {}                                        // fuente de cada dato, por clave
+    src: {},                                       // fuente de cada dato, por clave
+    hm: HM_DEF(), hpcD: HPC_DEF(), hptD: HPT_DEF(), od: OD_DEF()   // opciones de los pasos 3–6
   });
 
   /* Hoja de cálculo mínima con el mismo formato que Calcs: pasos {name, sym, sub, shown, unit} */
@@ -1295,7 +1342,284 @@ const Analysis = (function () {
     return { ok: r.ok, derive: d, res: r, error: r.ok ? null : r.error };
   }
 
-  return { HPC_MAP, map, DEFAULT, derive, designPoint, lerp };
+
+  const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+  const mfp = (g, M) => Math.sqrt(g) * M * Math.pow(1 + (g - 1) / 2 * M * M, -(g + 1) / (2 * (g - 1)));
+  const machFromPtP = (g, r) => Math.sqrt(Math.max(0, 2 / (g - 1) * (Math.pow(r, (g - 1) / g) - 1)));
+  // Mach en la garganta de una tobera (bloqueada si la relación de presiones supera la crítica)
+  const throatM = (g, ptp) => ptp >= Math.pow((g + 1) / 2, g / (g - 1)) ? 1 : machFromPtP(g, ptp);
+
+  /* ---------- Paso 3: mapas de calor π_LPC × π_HPC ----------
+     Escenario i: ṁ_core y η_HPC fijos (los del punto de diseño).
+     Escenario ii: ṁ_c,25 y η_HPC siguen la línea de operación del mapa para cada π_HPC. */
+  const HM_DEF = () => ({ lpcMin: 1.2, lpcMax: 6, hpcMin: null, hpcMax: null, n: 31 });
+  function heatmap(A, o, M) {
+    M = M || HPC_MAP; o = Object.assign(HM_DEF(), o || {});
+    const dp = designPoint(A, M); if (!dp.ok) return { ok: false, error: dp.error };
+    const pr = map.piRange(M);
+    const hMin = o.hpcMin != null ? o.hpcMin : pr[0], hMax = o.hpcMax != null ? o.hpcMax : pr[1];
+    const n = Math.max(5, Math.min(61, Math.round(o.n)));
+    const xs = [], ys = [];
+    for (let i = 0; i < n; i++) { xs.push(o.lpcMin + (o.lpcMax - o.lpcMin) * i / (n - 1)); ys.push(hMin + (hMax - hMin) * i / (n - 1)); }
+    const base = dp.derive.input, mcoreD = dp.derive.mcore;
+    const grids = {};
+    for (const sc of ['i', 'ii']) {
+      const cells = [];
+      for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+        const pl = xs[i], ph = ys[j];
+        const inp = JSON.parse(JSON.stringify(base));
+        inp.design.pilpc = pl; inp.design.pihpc = ph;
+        let eta = A.hpc.eta, mcore = mcoreD, mc = null;
+        if (sc === 'ii') { mc = map.mcFromPi(ph, M); eta = map.etaFromMc(mc, M); }
+        inp.comp.etaHPC = eta;
+        inp.size = { mdot0: 1, M2: 0.5 };
+        const r = E.solve(inp);
+        const c = { i, j, pl, ph, opr: A.pif * pl * ph, eta, ok: r.ok };
+        if (r.ok) {
+          if (sc === 'ii') mcore = mc * (r.Pt25 / A.ref.P) / Math.sqrt(r.Tt25 / A.ref.T);
+          const m0 = (1 + A.alpha) * mcore;
+          Object.assign(c, { mcore, m0, F: r.Fsp * m0, Fsp: r.Fsp, tsfc: r.tsfc, etaT: r.etaT, etaP: r.etaP, etaO: r.etaO, undef: r.dek <= 0 || r.Fsp <= 0 });
+        } else c.error = r.error;
+        cells.push(c);
+      }
+      grids[sc] = cells;
+    }
+    return { ok: true, xs, ys, n, grids, design: { pl: dp.derive.pilpc, ph: A.hpc.pi, F: dp.res.size.F, tsfc: dp.res.tsfc, etaT: dp.res.etaT, etaP: dp.res.etaP, etaO: dp.res.etaO, Fsp: dp.res.Fsp }, opts: o };
+  }
+
+  /* ---------- Paso 4: compresor de alta con etapas repetidas (repeating-row, repeating-stage) ---------- */
+  const HPC_DEF = () => ({ M1: 0.5, a1: 30, D: 0.5, sigma: 1, ec: null, rm: 0.30 });
+  // α₂ en función de α₁, D y σ (eq. 3.39)
+  function alpha2(a1, D, s) {
+    const c = Math.cos(a1 * D2R), G = (2 * s + Math.sin(a1 * D2R)) / c;
+    const ca2 = (2 * s * (1 - D) * G + Math.sqrt(G * G + 1 - 4 * s * s * (1 - D) * (1 - D))) / (G * G + 1);
+    return Math.acos(Math.min(1, ca2)) * R2D;
+  }
+  // Curvas de la figura de diseño: ωr/V₁, π_cs(M₁) y α₂ frente a α₁
+  function hpcChart(a1, M1, D, s, ec, g) {
+    const a2 = alpha2(a1, D, s), c1 = Math.cos(a1 * D2R), c2 = Math.cos(a2 * D2R);
+    const tcs = 1 + (g - 1) * M1 * M1 / (1 + (g - 1) / 2 * M1 * M1) * (c1 * c1 / (c2 * c2) - 1);
+    return { a2, tcs, pcs: Math.pow(tcs, g * ec / (g - 1)), wrV: c1 * (Math.tan(a1 * D2R) + Math.tan(a2 * D2R)) };
+  }
+  function hpcDesign(A, o, M) {
+    o = Object.assign(HPC_DEF(), o || {});
+    const dp = designPoint(A, M); if (!dp.ok) return { ok: false, error: dp.error };
+    const r = dp.res, g = A.gas.gc, cp = A.gas.cpc, R = (g - 1) / g * cp, eps = (g - 1) / g;
+    const out = { ok: true, warnings: [], o };
+    const S = sheet();
+    S.sec('in', 'Datos del compresor de alta', 'Vienen del punto de diseño (pasos 1 y 2). El diseño de etapas usa la eficiencia politrópica, que vale lo mismo para una etapa que para todo el compresor (eq. 3.43).');
+    S.data('Tt1', 'Temperatura total a la entrada (2.5)', 'T_{t25}', r.Tt25, 'K');
+    S.data('Pt1', 'Presión total a la entrada (2.5)', 'P_{t25}', r.Pt25, 'Pa');
+    S.data('Tt3', 'Temperatura total a la salida (3)', 'T_{t3}', r.Tt3, 'K');
+    S.data('pic', 'Relación de presiones del HPC', 'π_{HPC}', r.pihpc, '');
+    S.data('tc', 'Relación de temperaturas del HPC', 'τ_{HPC}', r.thpc, '');
+    const ecEq = eps * Math.log(r.pihpc) / Math.log(r.thpc);
+    const ec = o.ec > 0 ? o.ec : ecEq;
+    S.st('ec', 'Eficiencia politrópica equivalente', 'e_{c} = ((γ−1)/γ)·ln π_{HPC}/ln τ_{HPC}', '(' + num(g) + '−1)/' + num(g) + '·ln $pic$/ln $tc$', ecEq, '', { note: o.ec > 0 ? 'Se usa el valor fijado a mano: e_c = ' + num(o.ec) + '.' : 'Eq. 3.26: misma η_HPC del mapa expresada como politrópica.' });
+    V_set(S, 'ecu', ec);
+    S.sec('tri', 'Triángulos de velocidades de la etapa', 'Etapa de filas repetidas: α₁ = β₂ = α₃ y β₁ = α₂ = β₃, velocidad axial constante y radio medio constante. Elegidos: M₁ = ' + num(o.M1) + ', α₁ = ' + num(o.a1) + '°, D = ' + num(o.D) + ', σ = ' + num(o.sigma) + '.');
+    S.data('M1', 'Mach absoluto a la entrada del rotor', 'M_{1}', o.M1, '');
+    S.data('a1', 'Ángulo absoluto a la entrada', 'α_{1}', o.a1, '°');
+    const c1 = Math.cos(o.a1 * D2R);
+    const G = S.st('G', 'Parámetro auxiliar', 'Γ = (2σ + sin α_{1})/cos α_{1}', '(2·' + num(o.sigma) + ' + sin $a1$°)/cos $a1$°', (2 * o.sigma + Math.sin(o.a1 * D2R)) / c1, '');
+    const a2 = S.st('a2', 'Ángulo absoluto a la salida del rotor', 'cos α_{2} = [2σ(1−D)Γ + √(Γ^{2}+1−4σ^{2}(1−D)^{2})]/(Γ^{2}+1)', '[2·' + num(o.sigma) + '·(1−' + num(o.D) + ')·$G$ + √($G$^{2}+1−4·' + num(o.sigma) + '^{2}·(1−' + num(o.D) + ')^{2})]/($G$^{2}+1)', alpha2(o.a1, o.D, o.sigma), '°', { note: 'Eq. 3.39' });
+    const T1 = S.st('T1', 'Temperatura estática a la entrada', 'T_{1} = T_{t25}/(1 + (γ−1)/2·M_{1}^{2})', '$Tt1$/(1 + (' + num(g) + '−1)/2·$M1$^{2})', r.Tt25 / (1 + (g - 1) / 2 * o.M1 * o.M1), 'K');
+    const a_1 = Math.sqrt(g * R * T1);
+    const V1 = S.st('V1', 'Velocidad absoluta a la entrada', 'V_{1} = M_{1}·√(γ·R·T_{1})', '$M1$·√(' + num(g) + '·' + num(R) + '·$T1$)', o.M1 * a_1, 'm/s');
+    const u = S.st('u', 'Velocidad axial (constante)', 'u = V_{1}·cos α_{1}', '$V1$·cos $a1$°', V1 * c1, 'm/s');
+    const v1 = S.st('v1', 'Componente tangencial a la entrada', 'v_{1} = u·tan α_{1}', '$u$·tan $a1$°', u * Math.tan(o.a1 * D2R), 'm/s');
+    const v2 = S.st('v2', 'Componente tangencial a la salida del rotor', 'v_{2} = u·tan α_{2}', '$u$·tan $a2$°', u * Math.tan(a2 * D2R), 'm/s');
+    const U = S.st('U', 'Velocidad de pala en el radio medio', 'U = ωr = v_{1} + v_{2}', '$v1$ + $v2$', v1 + v2, 'm/s', { note: 'Eq. 3.37 (fila repetida). Equivale a ωr/V₁ = cos α₁(tan α₁ + tan α₂), eq. 3.45.' });
+    const V2 = S.st('V2', 'Velocidad absoluta a la salida del rotor', 'V_{2} = u/cos α_{2}', '$u$/cos $a2$°', u / Math.cos(a2 * D2R), 'm/s');
+    S.st('V1R', 'Velocidad relativa a la entrada del rotor', 'V_{1R} = V_{2} (simetría)', '$V2$', V2, 'm/s');
+    S.st('V2R', 'Velocidad relativa a la salida del rotor', 'V_{2R} = V_{1} (simetría)', '$V1$', V1, 'm/s');
+    const M1R = S.st('M1R', 'Mach relativo a la entrada del rotor', 'M_{1R} = V_{1R}/a_{1}', '$V2$/' + num(a_1), V2 / a_1, '');
+    const Psi = S.st('Psi', 'Coeficiente de carga', 'Ψ = (tan α_{2} − tan α_{1})/(tan α_{1} + tan α_{2})', '(tan $a2$° − tan $a1$°)/(tan $a1$° + tan $a2$°)', (Math.tan(a2 * D2R) - Math.tan(o.a1 * D2R)) / (Math.tan(o.a1 * D2R) + Math.tan(a2 * D2R)), '', { note: 'Eq. 3.46' });
+    const Phi = S.st('Phi', 'Coeficiente de flujo', 'Φ = 1/(tan α_{1} + tan α_{2})', '1/(tan $a1$° + tan $a2$°)', 1 / (Math.tan(o.a1 * D2R) + Math.tan(a2 * D2R)), '');
+    S.data('Rc', 'Grado de reacción', 'R_{c}', 0.5, '', '0,5 (exacto en etapas de filas repetidas)');
+    S.sec('st', 'Etapa y número de etapas', 'Cada etapa repetida sube la misma T_t (eq. 3.40); las etapas necesarias salen de dividir el salto total entre el de una etapa (eq. 3.50).');
+    const tcs = S.st('tcs', 'Relación de temperaturas de la primera etapa', 'τ_{cs} = 1 + (γ−1)M_{1}^{2}/(1+(γ−1)/2·M_{1}^{2})·(cos^{2}α_{1}/cos^{2}α_{2} − 1)', '1 + (' + num(g) + '−1)·$M1$^{2}/(1+(' + num(g) + '−1)/2·$M1$^{2})·(cos^{2}$a1$°/cos^{2}$a2$° − 1)', 1 + (g - 1) * o.M1 * o.M1 / (1 + (g - 1) / 2 * o.M1 * o.M1) * (c1 * c1 / Math.pow(Math.cos(a2 * D2R), 2) - 1), '', { note: 'Eq. 3.41' });
+    const pcs = S.st('pcs', 'Relación de presiones de la primera etapa', 'π_{cs} = τ_{cs}^{γ·e_{c}/(γ−1)}', '$tcs$^{' + num(g) + '·' + num(ec) + '/(' + num(g) + '−1)}', Math.pow(tcs, g * ec / (g - 1)), '');
+    S.st('ecs', 'Eficiencia isentrópica de la etapa', 'η_{cs} = (π_{cs}^{(γ−1)/γ} − 1)/(τ_{cs} − 1)', '($pcs$^{(' + num(g) + '−1)/' + num(g) + '} − 1)/($tcs$ − 1)', (Math.pow(pcs, eps) - 1) / (tcs - 1), '');
+    const dTs = S.st('dTs', 'Salto de temperatura por etapa', 'ΔT_{t,etapa} = (V_{2}^{2} − V_{1}^{2})/c_{p}', '($V2$^{2} − $V1$^{2})/' + num(cp), (V2 * V2 - V1 * V1) / cp, 'K');
+    const dT = S.st('dT', 'Salto de temperatura del HPC', 'ΔT_{t,HPC} = T_{t3} − T_{t25}', '$Tt3$ − $Tt1$', r.Tt3 - r.Tt25, 'K');
+    const ns = S.st('ns', 'Número de etapas (exacto)', 'n_{s} = ΔT_{t,HPC}/ΔT_{t,etapa}', '$dT$/$dTs$', dT / dTs, '');
+    const N = Math.max(1, Math.ceil(ns - 1e-6));
+    S.data('N', 'Número de etapas (entero)', 'N', N, '', String(N) + ' (se redondea hacia arriba)');
+    const dTr = S.st('dTr', 'Salto real por etapa con N etapas', 'ΔT_{t} = ΔT_{t,HPC}/N', '$dT$/' + N, dT / N, 'K', { note: 'Con N entero cada etapa trabaja un poco por debajo de su capacidad (' + num(100 * (dT / N) / dTs) + ' %).' });
+    // tabla de etapas
+    const stages = []; let Tt = r.Tt25, Pt = r.Pt25;
+    for (let k = 1; k <= N; k++) {
+      const To = Tt + dTr, tk = To / Tt, pk = Math.pow(tk, g * ec / (g - 1));
+      stages.push({ k, Tin: Tt, Tout: To, tau: tk, pi: pk, Pin: Pt, Pout: Pt * pk });
+      Tt = To; Pt *= pk;
+    }
+    const piTot = Pt / r.Pt25;
+    S.sec('ar', 'Velocidad de giro y alturas de álabe', 'Con un radio medio supuesto se obtiene el régimen de giro; las áreas salen del parámetro de flujo másico con A⊥ = A·cos α (eq. 2.7).');
+    S.data('rm', 'Radio medio (supuesto)', 'r_{m}', o.rm, 'm');
+    const w = S.st('w', 'Velocidad angular', 'ω = U/r_{m}', '$U$/$rm$', U / o.rm, 'rad/s', { alt: num(U / o.rm * 60 / (2 * Math.PI)) + ' rpm' });
+    const mcore = dp.derive.mcore;
+    S.data('mcore', 'Caudal del núcleo', 'ṁ_{core}', mcore, 'kg/s');
+    const Ain = S.st('Ain', 'Área anular a la entrada', 'A_{1} = ṁ·√(R·T_{t25})/(cos α_{1}·P_{t25}·MFP(M_{1}))', '$mcore$·√(' + num(R) + '·$Tt1$)/(cos $a1$°·$Pt1$·' + num(mfp(g, o.M1)) + ')', mcore * Math.sqrt(R * r.Tt25) / (c1 * r.Pt25 * mfp(g, o.M1)), 'm²');
+    const T3s = r.Tt3 - V1 * V1 / (2 * cp), M3 = V1 / Math.sqrt(g * R * T3s);
+    S.st('M3', 'Mach a la salida del compresor', 'M_{3} = V_{1}/√(γ·R·(T_{t3} − V_{1}^{2}/(2c_{p})))', '$V1$/√(' + num(g) + '·' + num(R) + '·($Tt3$ − $V1$^{2}/(2·' + num(cp) + ')))', M3, '', { note: 'Eq. 3.44: la velocidad se repite pero el sonido es más rápido, así que M baja.' });
+    const Aout = S.st('Aout', 'Área anular a la salida', 'A_{3} = ṁ·√(R·T_{t3})/(cos α_{1}·P_{t3}·MFP(M_{3}))', '$mcore$·√(' + num(R) + '·$Tt3$)/(cos $a1$°·' + num(r.Pt3) + '·' + num(mfp(g, M3)) + ')', mcore * Math.sqrt(R * r.Tt3) / (c1 * r.Pt3 * mfp(g, M3)), 'm²');
+    S.st('hin', 'Altura de álabe a la entrada', 'h_{1} = A_{1}/(2π·r_{m})', '$Ain$/(2π·$rm$)', Ain / (2 * Math.PI * o.rm), 'm');
+    S.st('hout', 'Altura de álabe a la salida', 'h_{3} = A_{3}/(2π·r_{m})', '$Aout$/(2π·$rm$)', Aout / (2 * Math.PI * o.rm), 'm');
+    if (o.M1 < 0.4 || o.M1 > 0.6) out.warnings.push('M₁ fuera del intervalo recomendado (0,4–0,6).');
+    if (M1R > 1) out.warnings.push('M₁R = ' + M1R.toFixed(2) + ' > 1: rotor transónico a la entrada.');
+    if (o.a1 > 45) out.warnings.push('α₁ alto: los álabes guía de entrada tendrían que girar mucho el flujo.');
+    if (U > 500) out.warnings.push('U = ' + U.toFixed(0) + ' m/s: velocidad de pala muy alta para un compresor.');
+    if (Math.abs(piTot / r.pihpc - 1) > 1e-6) out.warnings.push('Con e_c fijado a mano, las N etapas dan π = ' + piTot.toFixed(3) + ' en vez de π_HPC = ' + r.pihpc.toFixed(3) + '.');
+    Object.assign(out, { sheet: S.secs, dp, g, R, cp, ec, ecEq, a1: o.a1, a2, M1: o.M1, T1, V1, V2, u, v1, v2, U, M1R, Psi, Phi, tcs, pcs, dTs, dT, ns, N, dTr, stages, piTot, w, rpm: U / o.rm * 60 / (2 * Math.PI), Ain, Aout, M3, rm: o.rm });
+    return out;
+  }
+  function V_set(S, k, v) { S.V[k] = v; }
+
+  /* ---------- Paso 5: turbina de alta de una etapa, velocidad axial constante, salida sin giro ---------- */
+  const HPT_DEF = () => ({ Psi: 1.6, Phi: 0.65 });
+  function hptDesign(A, o, hpc, M) {
+    o = Object.assign(HPT_DEF(), o || {});
+    const dp = designPoint(A, M); if (!dp.ok) return { ok: false, error: dp.error };
+    const r = dp.res, g = A.gas.gt, cp = A.gas.cpt, R = (g - 1) / g * cp;
+    const out = { ok: true, warnings: [], o };
+    const S = sheet();
+    S.sec('in', 'Datos de la turbina de alta', 'El salto de temperatura sale del balance de potencias del eje de alta (paso 2). Se eligen el coeficiente de carga Ψ y el de flujo Φ; la velocidad de pala sale de Ψ.');
+    S.data('Tt4', 'Temperatura total a la entrada (4)', 'T_{t4}', r.Tt4, 'K');
+    S.data('Tt45', 'Temperatura total a la salida (4.5)', 'T_{t45}', r.Tt45, 'K');
+    S.data('Pt4', 'Presión total a la entrada', 'P_{t4}', r.Pt4, 'Pa');
+    S.data('Psi', 'Coeficiente de carga (elegido)', 'Ψ', o.Psi, '');
+    S.data('Phi', 'Coeficiente de flujo (elegido)', 'Φ', o.Phi, '');
+    const dT = S.st('dT', 'Salto de temperatura de la etapa', 'ΔT_{t} = T_{t4} − T_{t45}', '$Tt4$ − $Tt45$', r.Tt4 - r.Tt45, 'K');
+    const U = S.st('U', 'Velocidad de pala necesaria', 'U = √(c_{pt}·ΔT_{t}/Ψ)', '√(' + num(cp) + '·$dT$/$Psi$)', Math.sqrt(cp * dT / o.Psi), 'm/s', { note: 'Definición de Ψ = c_p·ΔT_t/U² (eq. 4.41).' });
+    const Rt = S.st('Rt', 'Grado de reacción', 'R_{t} = 1 − Ψ/2', '1 − $Psi$/2', 1 - o.Psi / 2, '', { note: 'Eq. 4.31: con salida sin giro (α₃ = 0), carga y reacción van ligadas.' });
+    S.sec('tri', 'Triángulos de velocidades', 'Convenio de la turbina: v₂ positivo en el sentido de U, v₃ positivo en sentido contrario. v₂R = v₂ − U, v₃R = v₃ + U.');
+    const u = S.st('u', 'Velocidad axial (constante)', 'u = Φ·U', '$Phi$·$U$', o.Phi * U, 'm/s');
+    const v2 = S.st('v2', 'Componente tangencial a la salida del estator', 'v_{2} = Ψ·U (con v_{3} = 0)', '$Psi$·$U$', o.Psi * U, 'm/s');
+    const a2 = S.st('a2', 'Ángulo absoluto a la salida del estator', 'α_{2} = atan(v_{2}/u)', 'atan($v2$/$u$)', Math.atan(v2 / u) * R2D, '°');
+    const V2 = S.st('V2', 'Velocidad absoluta a la salida del estator', 'V_{2} = √(u^{2} + v_{2}^{2})', '√($u$^{2} + $v2$^{2})', Math.hypot(u, v2), 'm/s');
+    const b2 = S.st('b2', 'Ángulo relativo a la entrada del rotor', 'β_{2} = atan((v_{2} − U)/u)', 'atan(($v2$ − $U$)/$u$)', Math.atan((v2 - U) / u) * R2D, '°');
+    const V2R = S.st('V2R', 'Velocidad relativa a la entrada del rotor', 'V_{2R} = √(u^{2} + (v_{2} − U)^{2})', '√($u$^{2} + ($v2$ − $U$)^{2})', Math.hypot(u, v2 - U), 'm/s');
+    const b3 = S.st('b3', 'Ángulo relativo a la salida del rotor', 'β_{3} = atan(U/u)', 'atan($U$/$u$)', Math.atan(U / u) * R2D, '°');
+    const V3R = S.st('V3R', 'Velocidad relativa a la salida del rotor', 'V_{3R} = √(u^{2} + U^{2})', '√($u$^{2} + $U$^{2})', Math.hypot(u, U), 'm/s');
+    S.st('V3', 'Velocidad absoluta a la salida', 'V_{3} = u (α_{3} = 0)', '$u$', u, 'm/s');
+    S.st('eps', 'Deflexión del rotor', 'ε = β_{2} + β_{3}', '$b2$ + $b3$', b2 + b3, '°');
+    S.st('PsiPhi', 'Ψ/Φ (eje de la figura de diseño)', 'Ψ/Φ = tan β_{2} + tan β_{3}', 'tan $b2$° + tan $b3$°', o.Psi / o.Phi, '');
+    S.st('RtPhi', 'R_t/Φ (eje de la figura de diseño)', 'R_{t}/Φ = (tan β_{3} − tan β_{2})/2', '(tan $b3$° − tan $b2$°)/2', Rt / o.Phi, '');
+    S.sec('th', 'Ciclo de la etapa', 'El estator no da trabajo (T_t se conserva); el rotor baja T_t hasta T_t45. Las estáticas salen de restar la energía cinética.');
+    const T2 = S.st('T2', 'Temperatura estática a la salida del estator', 'T_{2} = T_{t4} − V_{2}^{2}/(2c_{pt})', '$Tt4$ − $V2$^{2}/(2·' + num(cp) + ')', r.Tt4 - V2 * V2 / (2 * cp), 'K');
+    const M2 = S.st('M2', 'Mach a la salida del estator', 'M_{2} = V_{2}/√(γ_{t}·R·T_{2})', '$V2$/√(' + num(g) + '·' + num(R) + '·$T2$)', V2 / Math.sqrt(g * R * T2), '');
+    S.st('M2R', 'Mach relativo a la entrada del rotor', 'M_{2R} = V_{2R}/√(γ_{t}·R·T_{2})', '$V2R$/√(' + num(g) + '·' + num(R) + '·$T2$)', V2R / Math.sqrt(g * R * T2), '');
+    const T3 = S.st('T3', 'Temperatura estática a la salida', 'T_{3} = T_{t45} − u^{2}/(2c_{pt})', '$Tt45$ − $u$^{2}/(2·' + num(cp) + ')', r.Tt45 - u * u / (2 * cp), 'K');
+    S.st('M3', 'Mach a la salida', 'M_{3} = u/√(γ_{t}·R·T_{3})', '$u$/√(' + num(g) + '·' + num(R) + '·$T3$)', u / Math.sqrt(g * R * T3), '');
+    const M3R = S.st('M3R', 'Mach relativo a la salida del rotor', 'M_{3R} = V_{3R}/√(γ_{t}·R·T_{3})', '$V3R$/√(' + num(g) + '·' + num(R) + '·$T3$)', V3R / Math.sqrt(g * R * T3), '');
+    S.data('pts', 'Relación de presiones de la etapa', 'π_{tH}', r.pith, '');
+    S.data('tts', 'Relación de temperaturas de la etapa', 'τ_{tH}', r.tth, '');
+    S.st('ets', 'Eficiencia isentrópica de la etapa', 'η_{ts} = (1 − τ_{tH})/(1 − π_{tH}^{(γ_{t}−1)/γ_{t}})', '(1 − $tts$)/(1 − $pts$^{(' + num(g) + '−1)/' + num(g) + '})', (1 - r.tth) / (1 - Math.pow(r.pith, (g - 1) / g)), '');
+    // eje común con el HPC
+    let rmH = null, ratio = null;
+    if (hpc && hpc.ok) {
+      S.sec('ax', 'Mismo eje que el compresor de alta', 'La HPT gira a la misma ω que el HPC; para dar la U necesaria su radio medio tiene que ser r = U/ω.');
+      S.data('w', 'Velocidad angular del eje de alta (paso 4)', 'ω', hpc.w, 'rad/s', num(hpc.w) + ' rad/s (' + num(hpc.rpm) + ' rpm)');
+      rmH = S.st('rmH', 'Radio medio de la turbina', 'r_{m,HPT} = U/ω', '$U$/$w$', U / hpc.w, 'm');
+      S.data('rmC', 'Radio medio del compresor (paso 4)', 'r_{m,HPC}', hpc.rm, 'm');
+      ratio = S.st('ratio', 'Relación de radios', 'r_{m,HPT}/r_{m,HPC}', '$rmH$/$rmC$', rmH / hpc.rm, '');
+      const m4 = dp.derive.mcore * (1 + r.f);
+      S.data('m4', 'Caudal de gas', 'ṁ_{4}', m4, 'kg/s');
+      const A2 = S.st('A2', 'Área a la salida del estator', 'A_{2} = ṁ_{4}·√(R·T_{t4})/(cos α_{2}·P_{t4}·MFP(M_{2}))', '$m4$·√(' + num(R) + '·$Tt4$)/(cos $a2$°·$Pt4$·' + num(mfp(g, Math.min(M2, 1))) + ')', m4 * Math.sqrt(R * r.Tt4) / (Math.cos(a2 * D2R) * r.Pt4 * mfp(g, Math.min(M2, 1))), 'm²', { note: M2 > 1 ? 'Con M₂ > 1 se usa la garganta (M = 1), que es la que fija el caudal.' : '' });
+      S.st('h2', 'Altura de álabe', 'h = A_{2}/(2π·r_{m,HPT})', '$A2$/(2π·$rmH$)', A2 / (2 * Math.PI * rmH), 'm');
+    }
+    if (a2 > 70) out.warnings.push('α₂ = ' + a2.toFixed(1) + '° > 70°: pérdidas inaceptables en el estator. Baja Ψ o sube Φ.');
+    if (M2 <= 1) out.warnings.push('M₂ = ' + M2.toFixed(2) + ' ≤ 1: el estator no está bloqueado y no fijaría el caudal del motor.');
+    if (M3R >= 0.9) out.warnings.push('M₃R = ' + M3R.toFixed(2) + ' ≥ 0,9: rotor demasiado cerca de sónico a la salida.');
+    if (Rt < 0) out.warnings.push('R_t < 0 (Ψ > 2): reacción negativa, la etapa estaría sobrecargada. Hace falta más U (más radio o régimen) o una segunda etapa.');
+    if (ratio && ratio > 1.8) out.warnings.push('La turbina necesita un radio ' + ratio.toFixed(2) + ' veces el del compresor: es mucho. Baja Ψ o acepta una segunda etapa.');
+    Object.assign(out, { sheet: S.secs, dp, g, cp, R, dT, U, Rt, u, v2, a2, V2, b2, V2R, b3, V3R, V3: u, T2, M2, T3, M3R, rmH, ratio, Psi: o.Psi, Phi: o.Phi, eps: b2 + b3 });
+    return out;
+  }
+
+  /* ---------- Paso 6: fuera de diseño (método del tema 7) ----------
+     Turbinas de alta y baja con entrada bloqueada (τ_tH constante), toberas con garganta,
+     reparto de potencia fan/LPC constante, α variable a partir de los caudales; iteración. */
+  const OD_DEF = () => ({ h: 0, M0: 0, dTt4: 100, Tt4: null });
+  function offDesign(A, o, M) {
+    o = Object.assign(OD_DEF(), o || {});
+    const dp = designPoint(A, M); if (!dp.ok) return { ok: false, error: dp.error };
+    const d = dp.res, inp = dp.derive.input, c = inp.comp, g = inp.gas;
+    const gc = g.gc, gt = g.gt, cpc = g.cpc, cpt = g.cpt, epsC = (gc - 1) / gc;
+    const a = E.isa(o.h), T0 = a.T, P0 = a.P, M0 = o.M0;
+    const Tt4 = o.Tt4 > 0 ? o.Tt4 : d.Tt4 + o.dTt4;
+    // constantes de diseño
+    const KP = A.alpha * (d.tf - 1) / (d.tf * d.tlpc - 1);                // reparto de potencia fan secundario / núcleo
+    const M8D = throatM(gt, d.Pt9 / d.P0), M18D = throatM(gc, d.Pt19 / d.P0);
+    const nL = gt / ((gt - 1) * c.et) - 0.5;
+    const C9 = Math.pow(d.ttl, nL) * mfp(gt, M8D);                         // π_tL·MFP(M8)/√τ_tL = cte
+    const mcD = dp.derive.mcore;
+    const r19D = d.Pt19 / d.Pt4, t19D = d.Tt4 / d.Tt13;
+    // iteración
+    const tr = 1 + (gc - 1) / 2 * M0 * M0, pr = Math.pow(tr, gc / (gc - 1));
+    const etar = M0 <= 1 ? 1 : 1 - 0.075 * Math.pow(M0 - 1, 1.35), pid = c.pidmax * etar;
+    const Tt2 = T0 * tr, Pt2 = P0 * pr * pid;
+    let ttl = d.ttl, al = A.alpha, f = d.f, it = 0, err = 1, st = null;
+    const hist = [];
+    for (; it < 400 && err > 1e-11; it++) {
+      const Tt45 = Tt4 * d.tth;
+      const X = 1 + c.etam * (1 + f) * cpt * Tt45 * (1 - ttl) / ((1 + KP) * cpc * Tt2);   // τ_f·τ_LPC
+      const tf = 1 + KP * (X - 1) / al, tl = X / tf;
+      if (!(tf > 1 && tl >= 0.999)) return { ok: false, error: 'La iteración fuera de diseño no converge: el reparto entre fan y LPC deja de tener sentido con estos datos (τ_f = ' + tf.toFixed(3) + ', τ_LPC = ' + tl.toFixed(3) + ').' };
+      const pf = Math.pow(tf, gc * c.ef / (gc - 1)), pl = Math.pow(tl, gc * c.ec / (gc - 1));
+      const Tt25 = Tt2 * X, Pt25 = Pt2 * pf * pl;
+      const th = 1 + c.etam * (1 + f) * cpt * Tt4 * (1 - d.tth) / (cpc * Tt25);
+      const ph = Math.pow(1 + c.etaHPC * (th - 1), 1 / epsC);
+      const Tt3 = Tt25 * th, Pt3 = Pt25 * ph;
+      if (!(Tt4 > Tt3)) return { ok: false, error: 'T_t4 no supera T_t3 fuera de diseño: sube T_t4.' };
+      f = (cpt * Tt4 - cpc * Tt3) / (c.etab * inp.gas.hPR - cpt * Tt4);
+      const Pt4 = Pt3 * c.pib, Pt9 = Pt4 * d.pith * Math.pow(ttl, gt / ((gt - 1) * c.et)) * c.pin;
+      if (!(Pt9 > P0)) return { ok: false, error: 'Fuera de diseño la presión a la salida del núcleo no supera la ambiente.' };
+      const M8 = throatM(gt, Pt9 / P0);
+      const ttlN = Math.pow(C9 / mfp(gt, M8), 1 / nL);
+      const Tt13 = Tt2 * tf, Pt19 = Pt2 * pf * c.pifn;
+      if (!(Pt19 > P0)) return { ok: false, error: 'Fuera de diseño la presión a la salida del fan no supera la ambiente.' };
+      const M18 = throatM(gc, Pt19 / P0);
+      const alN = A.alpha * (Pt19 / Pt4) / r19D * Math.sqrt((Tt4 / Tt13) / t19D) * mfp(gc, M18) / mfp(gc, M18D);
+      err = Math.abs(ttlN - ttl) + Math.abs(alN - al) / al;
+      ttl += 0.6 * (ttlN - ttl); al += 0.6 * (alN - al);
+      st = { X, tf, tl, pf, pl, th, ph, Tt25, Pt25, Tt3, Pt3, Pt4, Pt9, Pt19, Tt13, M8, M18, f };
+      if (it < 60) hist.push({ it: it + 1, ttl, al, tf, err });
+    }
+    if (err > 1e-8) return { ok: false, error: 'La iteración fuera de diseño no ha convergido.' };
+    const mcore = mcD * (st.Pt4 / d.Pt4) * Math.sqrt(d.Tt4 / Tt4) * (1 + d.f) / (1 + st.f);
+    const m0 = (1 + al) * mcore;
+    const nz = Object.assign({}, inp.nozzle); if (nz.kindCore === 'cd') nz.p0p9 = 1; if (nz.kindFan === 'cd') nz.p0p19 = 1;
+    const sol = E.solve(Object.assign({}, inp, { flight: { T0, P0, M0 }, design: { spools: 'two', pif: st.pf, pilpc: st.pl, pihpc: st.ph, alpha: al, Tt4 }, nozzle: nz, size: { mdot0: m0, M2: 0.5 } }));
+    if (!sol.ok) return { ok: false, error: sol.error };
+    const mc25 = mcore * Math.sqrt(st.Tt25 / A.ref.T) / (st.Pt25 / A.ref.P);
+    // hoja de cálculo con el estado convergido
+    const S = sheet();
+    S.sec('hy', 'Hipótesis del fuera de diseño', 'Turbinas con entrada bloqueada (τ_tH constante), toberas con garganta de área fija, eficiencias constantes y reparto de potencia fan/LPC constante. Incógnitas: τ_f, τ_LPC, τ_tL, α y los Mach de las toberas; se parte de los valores de diseño y se itera.');
+    S.data('h', 'Altitud', 'h', o.h, 'm'); S.data('M0', 'Mach de vuelo', 'M_{0}', M0, '');
+    S.data('T0', 'Temperatura ambiente', 'T_{0}', T0, 'K'); S.data('P0', 'Presión ambiente', 'P_{0}', P0, 'Pa');
+    S.data('Tt4', 'Temperatura de entrada a turbina (supuesta)', 'T_{t4}', Tt4, 'K');
+    S.data('tth', 'τ de la turbina de alta (= diseño)', 'τ_{tH}', d.tth, '');
+    S.data('KP', 'Reparto de potencia (diseño)', "K' = α(τ_{f}−1)/(τ_{f}τ_{LPC}−1)", KP, '');
+    S.data('C9', 'Constante de la tobera del núcleo (diseño)', 'π_{tL}·MFP(M_{8})/√τ_{tL}', C9, '');
+    S.sec('cv', 'Estado convergido', 'Valores tras ' + it + ' iteraciones (error < 10⁻¹¹).');
+    S.data('ttl', 'τ de la turbina de baja', 'τ_{tL}', ttl, ''); S.data('al', 'Relación de derivación', 'α', al, '');
+    S.data('tf', 'Relación de temperaturas del fan', 'τ_{f}', st.tf, ''); S.data('pf', 'π del fan', 'π_{f}', st.pf, '');
+    S.data('tl', 'Relación de temperaturas del LPC', 'τ_{LPC}', st.tl, ''); S.data('pl', 'π del LPC', 'π_{LPC}', st.pl, '');
+    S.data('th', 'Relación de temperaturas del HPC', 'τ_{HPC}', st.th, ''); S.data('ph', 'π del HPC', 'π_{HPC}', st.ph, '');
+    S.data('f', 'Relación combustible/aire', 'f', st.f, '');
+    S.data('M8', 'Mach en la garganta del núcleo', 'M_{8}', st.M8, ''); S.data('M18', 'Mach en la garganta del fan', 'M_{18}', st.M18, '');
+    S.sec('mf', 'Caudal', 'La turbina de alta bloqueada fija el caudal del núcleo: ṁ(1+f)·√T_t4/P_t4 = cte.');
+    S.data('mcD', 'Caudal del núcleo de diseño', 'ṁ_{core,D}', mcD, 'kg/s');
+    S.data('Pt4', 'P_t4 fuera de diseño', 'P_{t4}', st.Pt4, 'Pa'); S.data('Pt4D', 'P_t4 de diseño', 'P_{t4,D}', d.Pt4, 'Pa'); S.data('Tt4D', 'T_t4 de diseño', 'T_{t4,D}', d.Tt4, 'K');
+    S.st('mcore', 'Caudal del núcleo', 'ṁ_{core} = ṁ_{core,D}·(P_{t4}/P_{t4,D})·√(T_{t4,D}/T_{t4})·(1+f_{D})/(1+f)', '$mcD$·($Pt4$/$Pt4D$)·√($Tt4D$/$Tt4$)·(1+' + num(d.f) + ')/(1+$f$)', mcore, 'kg/s');
+    S.st('m0', 'Caudal total', 'ṁ_{0} = (1+α)·ṁ_{core}', '(1+$al$)·$mcore$', m0, 'kg/s');
+    S.st('mc25', 'Caudal corregido en el HPC', 'ṁ_{c,25} = ṁ_{core}·√θ_{25}/δ_{25}', '$mcore$·√(' + num(st.Tt25) + '/' + num(A.ref.T) + ')/(' + num(st.Pt25) + '/' + num(A.ref.P) + ')', mc25, 'kg/s', { note: 'Punto de funcionamiento del HPC: compáralo con la línea de operación del mapa.' });
+    return { ok: true, sheet: S.secs, res: sol, dp, it, hist, ttl, alpha: al, st, mcore, m0, mc25, Tt4, T0, P0, M0, h: o.h, o };
+  }
+
+  return { HPC_MAP, map, DEFAULT, derive, designPoint, lerp, mfp, alpha2, hpcChart, heatmap, HM_DEF, hpcDesign, HPC_DEF, hptDesign, HPT_DEF, offDesign, OD_DEF };
 })();
 if (typeof module !== 'undefined') module.exports = Analysis;
 
@@ -2292,11 +2616,11 @@ function anSave() { try { localStorage.setItem(AN_KEY, JSON.stringify(AN)); } ca
 const AN_STEPS = [
   { n: 1, t: 'Datos del motor', s: 'Crucero, ciclo, eficiencias y mapa del HPC' },
   { n: 2, t: 'Punto de diseño', s: 'Ciclo resuelto: F, TSFC y rendimientos' },
-  { n: 3, t: 'Mapas de calor', s: 'π_LPC × π_HPC, dos escenarios', soon: true },
-  { n: 4, t: 'Compresor de alta', s: 'Etapas repetidas y triángulos', soon: true },
-  { n: 5, t: 'Turbina de alta', s: 'Una etapa y triángulos', soon: true },
-  { n: 6, t: 'Fuera de diseño', s: 'Nivel del mar, estático', soon: true },
-  { n: 7, t: 'Resumen', s: 'Tablas de datos y resultados', soon: true }
+  { n: 3, t: 'Mapas de calor', s: 'π_LPC × π_HPC, dos escenarios' },
+  { n: 4, t: 'Compresor de alta', s: 'Etapas repetidas y triángulos' },
+  { n: 5, t: 'Turbina de alta', s: 'Una etapa y triángulos' },
+  { n: 6, t: 'Fuera de diseño', s: 'Nivel del mar, estático' },
+  { n: 7, t: 'Resumen', s: 'Tablas de datos y resultados' }
 ];
 
 /* ---------- Campos del paso 1 ----------
@@ -2342,9 +2666,9 @@ function renderAnalysis() {
   });
   $('#anReset').addEventListener('click', () => { if (!confirmReset()) return; AN = Analysis.DEFAULT(); anSave(); AN_STEP = 1; renderAnalysis(); });
   const main = $('#anMain');
-  main.innerHTML = AN_STEP === 1 ? anStep1() : AN_STEP === 2 ? anStep2() : anSoon(AN_STEP);
-  if (AN_STEP === 1) anInit1();
-  if (AN_STEP === 2) anInit2();
+  const V = { 1: [anStep1, anInit1], 2: [anStep2, anInit2], 3: [anStep3, anInit3], 4: [anStep4, anInit4], 5: [anStep5, anInit5], 6: [anStep6, anInit6], 7: [anStep7, anInit7] }[AN_STEP];
+  main.innerHTML = V[0]();
+  V[1]();
 }
 let resetArm = 0;
 function confirmReset() { const b = $('#anReset'); if (Date.now() - resetArm < 4000) return true; resetArm = Date.now(); b.textContent = 'Pulsa otra vez para borrar'; setTimeout(() => { if (b.isConnected) b.textContent = 'Empezar de cero'; }, 4000); return false; }
@@ -2558,6 +2882,331 @@ Object.assign(INFO, {
   an_etaHPC: () => ['Eficiencia isentrópica del HPC', `<p>Se lee en las isolíneas de eficiencia del mapa, en el punto de diseño. Es isentrópica (no politrópica), y se usa con ${eq('τ<sub>HPC</sub> = 1 + (π<sub>HPC</sub><sup>(γ−1)/γ</sup> − 1)/η<sub>HPC</sub>')}.</p>`],
   an_ref: () => ['Condiciones de referencia', `<p>Condiciones con las que está corregido el mapa. Lo habitual es el nivel del mar estándar: T<sub>ref</sub> = 288,15 K y P<sub>ref</sub> = 101 325 Pa. Si tu mapa usa otras, cámbialas aquí.</p>`],
   an_map: () => ['Mapa del compresor de alta', `<p>La línea es la <b>línea de operación</b>: los puntos por los que pasa el compresor al cambiar el régimen del motor. Las marcas indican la eficiencia isentrópica η<sub>HPC</sub> donde la línea cruza cada isolínea del mapa original; entre marcas se interpola linealmente. El círculo grande es el punto de diseño del mapa; el pequeño, los valores que estás usando.</p><p>Pasa el cursor sobre la línea para leer ṁ<sub>c</sub>, π y η en cada punto.</p>`]
+});
+
+/* ================= Utilidades comunes de los pasos 3–7 ================= */
+function anOptField(path, label, unit, min, max, step, info, scale) {
+  scale = scale || 1;
+  const v = getP(AN, path);
+  return `<div class="an-f an-f2"><label for="anf_${path}">${anSub(label)}${unit ? ` <span class="u">[${unit}]</span>` : ''}${info && INFO[info] ? ib(info) : ''}</label>
+    <input type="number" id="anf_${path}" data-opt="${path}" data-sc="${scale}" min="${min}" max="${max}" step="${step}" value="${v == null ? '' : +(+v * scale).toFixed(6)}" inputmode="decimal"></div>`;
+}
+let anTimer = 0;
+function anBindOpts(cb) {
+  $('#anMain').querySelectorAll('input[data-opt]').forEach(el => el.addEventListener('input', () => {
+    const v = parseFloat(String(el.value).replace(',', '.')), ok = isFinite(v) && v >= +el.min && v <= +el.max;
+    el.classList.toggle('bad', !ok); if (!ok) return;
+    setP(AN, el.dataset.opt, v / (+el.dataset.sc || 1)); anSave();
+    clearTimeout(anTimer); anTimer = setTimeout(cb, 120);
+  }));
+  $('#anMain').querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => { AN_STEP = +b.dataset.go; renderAnalysis(); window.scrollTo({ top: 0 }); }));
+}
+const anNav = (prev, next, nextLabel) => `<div class="an-next">${prev ? `<button type="button" class="btn" data-go="${prev}">← Paso ${prev}</button>` : '<span></span>'}${next ? `<button type="button" class="btn primary" data-go="${next}">Siguiente: ${nextLabel} →</button>` : ''}</div>`;
+const anChips = (w, okTxt) => `<div class="alerts">${w.length ? w.map(x => `<span class="chip warn">${x}</span>`).join('') : `<span class="chip ok">${okTxt || 'Sin avisos'}</span>`}</div>`;
+const anErr = (msg, back) => `<div class="alerts"><span class="chip bad">${msg}</span></div><p class="note">Revisa los datos del paso ${back || 1}.</p>${anNav(back || 1)}`;
+function anSheetBlock(secs, title, file) {
+  return `<details class="cl-sec"><summary>${title || 'Cálculo paso a paso'}</summary><div class="cl-bar" style="margin:6px 12px"><span class="sp"></span><button type="button" class="btn" data-sheet-dl="${file}">Descargar .txt</button></div>${anSheetHTML(secs)}</details>`;
+}
+function anBindSheet(secs, head) {
+  $('#anMain').querySelectorAll('[data-sheet-dl]').forEach(b => b.addEventListener('click', () => anSaveFile(b.dataset.sheetDl, Calcs.toText({ sections: secs }, `${AN.name} · ${head}`), 'text/plain')));
+}
+const isDark = () => { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches); };
+const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function anTip(e, html) { const tip = $('#tip'); tip.innerHTML = html; tip.hidden = false; placeTip(tip, e.clientX, e.clientY); }
+const anTipHide = () => { $('#tip').hidden = true; };
+
+/* Gráfica de líneas sencilla en SVG: series [{pts:[[x,y]], cls, label}] y puntos [{x,y,cls,label}] */
+function anPlot(o) {
+  const W = o.W || 520, H = o.H || 300, L = 52, Rr = o.Rr || 14, T = 14, B = 42;
+  const X = x => L + (x - o.x0) / (o.x1 - o.x0) * (W - L - Rr), Y = y => T + (o.y1 - y) / (o.y1 - o.y0) * (H - T - B);
+  let g = '';
+  (o.xt || []).forEach(v => g += `<line x1="${X(v)}" y1="${T}" x2="${X(v)}" y2="${H - B}" class="gr"/><text x="${X(v)}" y="${H - B + 15}" class="tk" text-anchor="middle">${fmt(v, o.xd || 0)}</text>`);
+  (o.yt || []).forEach(v => g += `<line x1="${L}" y1="${Y(v)}" x2="${W - Rr}" y2="${Y(v)}" class="gr"/><text x="${L - 6}" y="${Y(v) + 4}" class="tk" text-anchor="end">${fmt(v, o.yd || 0)}</text>`);
+  g += `<text x="${(L + W - Rr) / 2}" y="${H - 6}" class="ax" text-anchor="middle">${o.xl}</text><text x="13" y="${(T + H - B) / 2}" class="ax" text-anchor="middle" transform="rotate(-90 13 ${(T + H - B) / 2})">${o.yl}</text>`;
+  g += `<clipPath id="${o.id}c"><rect x="${L}" y="${T}" width="${W - L - Rr}" height="${H - T - B}"/></clipPath><g clip-path="url(#${o.id}c)">`;
+  (o.series || []).forEach(s => {
+    const d = s.pts.filter(p => isFinite(p[1])).map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join('');
+    g += `<path d="${d}" class="${s.cls || 'ln1'}" fill="none"/>`;
+  });
+  g += '</g>';
+  (o.series || []).forEach(s => { if (!s.label) return; const p = s.lab || s.pts[s.pts.length - 1]; if (p[1] < o.y0 || p[1] > o.y1) return; g += `<text x="${X(p[0]) + (s.dx || 4)}" y="${Y(p[1]) + (s.dy || 4)}" class="tk sl" text-anchor="${s.anchor || 'start'}">${s.label}</text>`; });
+  (o.points || []).forEach(p => g += `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="${p.r || 5.5}" class="${p.cls || 'dp'}"/>${p.label ? `<text x="${X(p.x) + (p.ldx != null ? p.ldx : 9)}" y="${Y(p.y) + (p.ldy != null ? p.ldy : -8)}" class="tk lab" text-anchor="${p.anchor || 'start'}">${p.label}</text>` : ''}`);
+  return `<svg viewBox="0 0 ${W} ${H}" class="an-plot" role="img" aria-label="${o.aria || ''}">${g}</svg>`;
+}
+
+/* Triángulos de velocidades: cada triángulo = {title, vecs:[{x,y,lab,cls}], U:[p,q]} en m/s; eje x axial, eje y tangencial */
+function anTriangles(tris, opt) {
+  opt = opt || {};
+  const W = 560, H = opt.H || 300, pad = 34, colW = (W - pad) / tris.length;
+  const all = tris.flatMap(t => t.vecs.map(v => [v.x, v.y]).concat(t.U ? t.U.map(p => [p.x, p.y]) : []));
+  const xmax = Math.max(...all.map(p => p[0])), ymin = Math.min(0, ...all.map(p => p[1])), ymax = Math.max(0, ...all.map(p => p[1]));
+  const sc = Math.min((colW - 190) / xmax, (H - 96) / ((ymax - ymin) || 1));
+  const sgn = opt.down ? 1 : -1;                     // tangencial hacia arriba (compresor) o hacia abajo (turbina)
+  const OY = opt.down ? 62 - ymin * sc : 62 + ymax * sc;
+  let g = `<defs>${['a1', 'a2', 'a3'].map((id, i) => `<marker id="ar_${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk${i + 1}"/></marker>`).join('')}</defs>`;
+  tris.forEach((t, k) => {
+    const ox = pad + k * colW;
+    const P = v => [ox + v.x * sc, OY + sgn * v.y * sc];
+    g += `<text x="${ox}" y="18" class="ax">${t.title}</text>`;
+    g += `<line x1="${ox - 6}" y1="${OY}" x2="${ox + xmax * sc + 10}" y2="${OY}" class="gr"/>`;
+    t.vecs.forEach(v => { const p = P(v); g += `<line x1="${ox}" y1="${OY}" x2="${p[0]}" y2="${p[1]}" class="vc ${v.cls}" marker-end="url(#ar_${v.cls === 'v1' ? 'a1' : v.cls === 'v2' ? 'a2' : 'a3'})"/><text x="${p[0] + 6}" y="${p[1] + (v.dy || 4)}" class="tk vl">${v.lab}</text>`; });
+    if (t.U) { const p = P(t.U[0]), q = P(t.U[1]); g += `<line x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}" class="vc v3" marker-end="url(#ar_a3)"/><text x="${(p[0] + q[0]) / 2 + 6}" y="${(p[1] + q[1]) / 2}" class="tk vl">U</text>`; }
+    (t.notes || []).forEach((n, i) => g += `<text x="${ox}" y="${34 + i * 14}" class="tk">${n}</text>`);
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" class="an-plot an-tri" role="img" aria-label="Triángulos de velocidades">${g}</svg><div class="an-legend"><span><i class="ln" style="background:var(--s1)"></i>Velocidad absoluta</span><span><i class="ln" style="background:var(--s2)"></i>Velocidad relativa</span><span><i class="ln" style="background:var(--ink)"></i>Velocidad de pala U</span></div>`;
+}
+
+/* ================= Paso 3 · Mapas de calor ================= */
+const HM_METRICS = [['F', 'Empuje F', v => v / 1000, 'kN', 1], ['tsfc', 'TSFC', v => v * 1e6, 'mg/(N·s)', 2], ['etaT', 'η térmico', v => v * 100, '%', 1], ['etaP', 'η propulsivo', v => v * 100, '%', 1], ['etaO', 'η global', v => v * 100, '%', 1], ['Fsp', 'Empuje específico F/ṁ₀', v => v, 'N·s/kg', 1], ['m0', 'Caudal total ṁ₀', v => v, 'kg/s', 1]];
+let AN_HM = null, AN_HMK = 'F', AN_HMSAME = false;
+const SEQ = ['#cde2fb', '#b7d3f6', '#9ec5f4', '#86b6ef', '#6da7ec', '#5598e7', '#3987e5', '#2a78d6', '#256abf', '#1c5cab', '#184f95', '#104281', '#0d366b'];
+function seqColor(t) { const r = isDark() ? SEQ.slice().reverse() : SEQ; t = Math.max(0, Math.min(1, t)) * (r.length - 1); const i = Math.min(r.length - 2, Math.floor(t)), f = t - i; const h = s => [1, 3, 5].map(k => parseInt(s.substr(k, 2), 16)); const a = h(r[i]), b = h(r[i + 1]); return 'rgb(' + a.map((x, k) => Math.round(x + (b[k] - x) * f)).join(',') + ')'; }
+function anStep3() {
+  const o = AN.hm, pr = Analysis.map.piRange();
+  const head = `<h2 class="an-h">3 · Mapas de calor</h2>
+  ${anLearn(`<p>Se repite el cálculo del punto de diseño en una rejilla de valores de <b>π<sub>LPC</sub></b> (eje horizontal) y <b>π<sub>HPC</sub></b> (eje vertical), manteniendo el resto de datos del motor (vuelo, α, π<sub>f</sub>, T<sub>t4</sub>, eficiencias). El color da el valor de la magnitud elegida y el círculo marca el punto de diseño.</p>
+   <ul><li><b>Escenario i:</b> el caudal real del núcleo ṁ<sub>core</sub> y la eficiencia η<sub>HPC</sub> se quedan en sus valores de diseño. Solo cambia el ciclo: es el estudio paramétrico «clásico».</li>
+   <li><b>Escenario ii:</b> el compresor de alta se mueve por su <b>línea de operación</b>. Para cada π<sub>HPC</sub> el mapa da el caudal corregido ṁ<sub>c,25</sub> y la eficiencia η<sub>HPC</sub>; el caudal real sale de ${eq('ṁ<sub>core</sub> = ṁ<sub>c,25</sub>·δ<sub>25</sub>/√θ<sub>25</sub>')}, que también depende de π<sub>LPC</sub> (cambia P<sub>t25</sub> y T<sub>t25</sub>). Por eso aquí el empuje cae mucho al bajar π<sub>HPC</sub>: el compresor traga menos aire.</li></ul>
+   <p>π<sub>HPC</sub> solo se varía dentro de la línea de operación del mapa (${fmt(pr[0], 2)}–${fmt(pr[1], 2)}). El rango de π<sub>LPC</sub> lo eliges tú; vigila que el OPR resultante (π<sub>f</sub>·π<sub>LPC</sub>·π<sub>HPC</sub>) sea razonable. Las celdas rayadas son combinaciones en las que el ciclo no tiene solución.</p>`, !anSeen(3))}`;
+  return head + `<section class="card an-card"><div class="an-hmctl">
+     <div class="an-f an-f2 an-wsel"><label for="anHmK">Magnitud</label><select id="anHmK">${HM_METRICS.map(m => `<option value="${m[0]}"${m[0] === AN_HMK ? ' selected' : ''}>${m[1]} [${m[3]}]</option>`).join('')}</select></div>
+     ${anOptField('hm.lpcMin', 'π_LPC mínimo', '', 1, 20, 0.1)}${anOptField('hm.lpcMax', 'π_LPC máximo', '', 1.1, 30, 0.1)}
+     ${anOptField('hm.n', 'Puntos por eje', '', 5, 61, 1)}
+     <div class="an-f an-f2"><label><input type="checkbox" id="anHmSame"${AN_HMSAME ? ' checked' : ''}> Misma escala de color en los dos mapas</label><span></span></div>
+    </div><p class="note">π<sub>HPC</sub> entre ${fmt(pr[0], 3)} y ${fmt(pr[1], 3)} (límites de la línea de operación). Supuesto por defecto para π<sub>LPC</sub>: 1,2–6.</p></section>
+   <div id="anHmOut"></div>${anNav(2, 4, 'compresor de alta')}`;
+}
+function anInit3() {
+  anBindOpts(anHmRender);
+  $('#anHmK').addEventListener('change', e => { AN_HMK = e.target.value; anHmDraw(); });
+  $('#anHmSame').addEventListener('change', e => { AN_HMSAME = e.target.checked; anHmDraw(); });
+  anHmRender();
+}
+function anHmRender() {
+  if (AN.hm.lpcMax <= AN.hm.lpcMin) { $('#anHmOut').innerHTML = '<div class="alerts"><span class="chip bad">π_LPC máximo debe ser mayor que el mínimo.</span></div>'; return; }
+  AN_HM = Analysis.heatmap(AN, AN.hm);
+  anHmDraw();
+}
+function anHmDraw() {
+  const out = $('#anHmOut'); if (!out) return;
+  const H = AN_HM; if (!H.ok) { out.innerHTML = anErr(H.error, 1); return; }
+  const m = HM_METRICS.find(x => x[0] === AN_HMK), val = c => c.ok && !c.undef ? m[2](c[m[0]]) : null;
+  const rng = list => { const v = list.flatMap(s => H.grids[s].map(val)).filter(x => x != null && isFinite(x)); return [Math.min(...v), Math.max(...v)]; };
+  const RG = AN_HMSAME ? { i: rng(['i', 'ii']), ii: rng(['i', 'ii']) } : { i: rng(['i']), ii: rng(['ii']) };
+  const dv = m[2](H.design[m[0]] != null ? H.design[m[0]] : NaN);
+  const one = (sc, title) => {
+    const [vmin, vmax] = RG[sc];
+    const W = 470, Hh = 380, L = 54, Rr = 12, T = 12, B = 44, n = H.n;
+    const cw = (W - L - Rr) / n, ch = (Hh - T - B) / n;
+    const X = x => L + (x - H.xs[0]) / (H.xs[n - 1] - H.xs[0]) * (W - L - Rr - cw) + cw / 2, Y = y => T + (H.ys[n - 1] - y) / (H.ys[n - 1] - H.ys[0]) * (Hh - T - B - ch) + ch / 2;
+    let g = `<defs><pattern id="hatch${sc}" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" class="hbg"/><line x1="0" y1="0" x2="0" y2="6" class="hln"/></pattern></defs>`;
+    H.grids[sc].forEach(c => { const v = val(c); g += `<rect x="${(X(c.pl) - cw / 2).toFixed(1)}" y="${(Y(c.ph) - ch / 2).toFixed(1)}" width="${(cw + 0.6).toFixed(1)}" height="${(ch + 0.6).toFixed(1)}" fill="${v == null ? `url(#hatch${sc})` : seqColor((v - vmin) / ((vmax - vmin) || 1))}"/>`; });
+    const xt = niceTicks(H.xs[0], H.xs[n - 1], 6), yt = niceTicks(H.ys[0], H.ys[n - 1], 6);
+    xt.forEach(v => g += `<text x="${X(v)}" y="${Hh - B + 16}" class="tk" text-anchor="middle">${fmt(v, v % 1 ? 1 : 0)}</text>`);
+    yt.forEach(v => g += `<text x="${L - 6}" y="${Y(v) + 4}" class="tk" text-anchor="end">${fmt(v, v % 1 ? 1 : 0)}</text>`);
+    g += `<text x="${(L + W - Rr) / 2}" y="${Hh - 8}" class="ax" text-anchor="middle">π LPC</text><text x="14" y="${(T + Hh - B) / 2}" class="ax" text-anchor="middle" transform="rotate(-90 14 ${(T + Hh - B) / 2})">π HPC</text>`;
+    const dx = X(H.design.pl), dy = Y(H.design.ph);
+    if (H.design.pl >= H.xs[0] && H.design.pl <= H.xs[n - 1]) g += `<circle cx="${dx}" cy="${dy}" r="7" class="hmdp"/><circle cx="${dx}" cy="${dy}" r="2" class="hmdp2"/>`;
+    g += `<rect id="hmHl${sc}" width="${cw}" height="${ch}" class="hmhl" visibility="hidden"/>`;
+    const leg = `<div class="an-cbar"><span class="num">${fmt(vmin, m[4])}</span><span class="bar" style="background:linear-gradient(90deg,${[0, .25, .5, .75, 1].map(seqColor).join(',')})"></span><span class="num">${fmt(vmax, m[4])} ${m[3]}</span></div>`;
+    return `<div class="an-hm"><h4>${title}</h4>${leg}<svg viewBox="0 0 ${W} ${Hh}" data-sc="${sc}" role="img" aria-label="Mapa de calor de ${m[1]}, ${title}">${g}</svg></div>`;
+  };
+  const leg = `<p class="note" style="margin:0 0 6px">${AN_HMSAME ? 'Misma escala de color en los dos mapas.' : 'Cada mapa tiene su propia escala de color (marca la casilla de arriba para compararlos con la misma).'} Más oscuro = valor mayor · ◯ punto de diseño (${fmt(dv, m[4])} ${m[3]}) · rayado: sin solución · pasa el cursor para ver cada celda.</p>`;
+  out.innerHTML = `<section class="card an-card"><h3>${m[1]} [${m[3]}]</h3>${leg}<div class="an-hms">${one('i', 'Escenario i · ṁ<sub>core</sub> y η<sub>HPC</sub> fijos')}${one('ii', 'Escenario ii · sobre la línea de operación')}</div>
+    <div class="cl-bar"><span class="sp"></span><button type="button" class="btn" id="anHmCsv">Descargar datos (.csv)</button></div></section>`;
+  out.querySelectorAll('svg[data-sc]').forEach(svg => {
+    const sc = svg.dataset.sc, n = H.n, W = 470, Hh = 380, L = 54, Rr = 12, T = 12, B = 44, cw = (W - L - Rr) / n, ch = (Hh - T - B) / n;
+    svg.addEventListener('pointermove', e => {
+      const r = svg.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width, my = (e.clientY - r.top) * Hh / r.height;
+      const i = Math.floor((mx - L) / cw), j = n - 1 - Math.floor((my - T) / ch);
+      const hl = svg.querySelector('#hmHl' + sc);
+      if (i < 0 || j < 0 || i >= n || j >= n) { anTipHide(); hl.setAttribute('visibility', 'hidden'); return; }
+      const c = H.grids[sc][j * n + i];
+      hl.setAttribute('x', L + i * cw); hl.setAttribute('y', T + (n - 1 - j) * ch); hl.setAttribute('visibility', 'visible');
+      anTip(e, `<b>π<sub>LPC</sub> = ${fmt(c.pl, 2)} · π<sub>HPC</sub> = ${fmt(c.ph, 2)}</b><br>OPR = ${fmt(c.opr, 1)} · η<sub>HPC</sub> = ${fmt(c.eta, 3)}<br>` +
+        (c.ok ? `${m[1]}: <b>${c.undef && m[0] !== 'F' && m[0] !== 'm0' ? 'no definido' : fmt(m[2](c[m[0]]), m[4]) + ' ' + m[3]}</b><br>ṁ<sub>core</sub> = ${fmt(c.mcore, 2)} kg/s · F = ${fmt(c.F / 1000, 1)} kN<br>TSFC = ${fmt(c.tsfc * 1e6, 2)} mg/(N·s)` : `<span class="bad">${c.error}</span>`));
+    });
+    svg.addEventListener('pointerleave', () => { anTipHide(); const hl = svg.querySelector('#hmHl' + sc); if (hl) hl.setAttribute('visibility', 'hidden'); });
+  });
+  $('#anHmCsv').addEventListener('click', () => {
+    const rows = ['escenario;pi_LPC;pi_HPC;OPR;eta_HPC;m_core_kg_s;m0_kg_s;F_kN;Fsp_Ns_kg;TSFC_mg_Ns;etaT;etaP;etaO'];
+    ['i', 'ii'].forEach(s => H.grids[s].forEach(c => rows.push([s, c.pl, c.ph, c.opr, c.eta].concat(c.ok ? [c.mcore, c.m0, c.F / 1000, c.Fsp, c.tsfc * 1e6, c.etaT, c.etaP, c.etaO] : ['', '', '', '', '', '', '', '']).map(x => typeof x === 'number' ? String(+x.toPrecision(6)).replace('.', ',') : x).join(';'))));
+    anSaveFile('mapas_de_calor.csv', rows.join('\n'), 'text/csv');
+  });
+}
+
+/* ================= Paso 4 · Compresor de alta ================= */
+let AN_HPC = null;
+function anStep4() {
+  AN_HPC = Analysis.hpcDesign(AN, AN.hpcD);
+  const head = `<h2 class="an-h">4 · Compresor de alta</h2>
+  ${anLearn(`<p>El HPC se diseña como un apilamiento de <b>etapas repetidas</b> (<i>repeating-row, repeating-stage</i>): cada etapa (rotor + estátor) devuelve el flujo con la misma velocidad y el mismo ángulo con los que entró, así que se puede repetir tantas veces como haga falta. Con filas repetidas α₁ = β₂ y β₁ = α₂, y la reacción es exactamente 0,5.</p>
+   <ul><li><b>Se eligen</b> el Mach de entrada M₁ (0,4–0,6 recomendado) y el ángulo de entrada α₁ (lo fijan los álabes guía de entrada). D = 0,5 (factor de difusión) y σ = 1 (solidez) son los de la figura de diseño.</li>
+   <li>Con D, σ y α₁ queda fijado α₂ (eq. 3.39). Con M₁ sale la velocidad V₁, y de ahí todo el triángulo y la velocidad de pala ${eq('U = ωr = v₁ + v₂')}.</li>
+   <li>El salto de temperatura por etapa es ${eq('ΔT<sub>t</sub> = (V₂² − V₁²)/c<sub>p</sub>')}, igual en todas las etapas, y el número de etapas es ${eq('n = ΔT<sub>t,HPC</sub>/ΔT<sub>t,etapa</sub>')}, redondeado hacia arriba.</li>
+   <li>La relación de presiones de cada etapa usa la eficiencia <b>politrópica</b> (vale lo mismo para la etapa que para el compresor). Por defecto se usa la equivalente a la η<sub>HPC</sub> del mapa, para que las etapas den exactamente el π<sub>HPC</sub> del ciclo. Como ΔT<sub>t</sub> es igual en todas pero T<sub>t</sub> crece, π de cada etapa va bajando.</li>
+   <li>El radio medio no lo fija el ciclo: es un supuesto que da el régimen de giro (ω = U/r<sub>m</sub>) y las alturas de álabe.</li></ul>`, !anSeen(4))}`;
+  const ctl = `<section class="card an-card"><h3>Parámetros elegidos</h3><div class="an-hmctl">
+    ${anOptField('hpcD.M1', 'M₁ (Mach de entrada)', '', 0.2, 0.8, 0.01, 'an_M1')}${anOptField('hpcD.a1', 'α₁ (ángulo de entrada)', '°', 0, 70, 0.5, 'an_a1')}
+    ${anOptField('hpcD.D', 'D (factor de difusión)', '', 0.3, 0.65, 0.01)}${anOptField('hpcD.sigma', 'σ (solidez)', '', 0.5, 2, 0.01)}
+    ${anOptField('hpcD.rm', 'r_m (radio medio, supuesto)', 'm', 0.05, 1.5, 0.005)}
+    <div class="an-f an-f2"><label><input type="checkbox" id="anEcAuto"${AN.hpcD.ec > 0 ? '' : ' checked'}> e<sub>c</sub> equivalente a la η<sub>HPC</sub> del mapa</label>${anOptField('hpcD.ec', 'e_c fijada a mano', '', 0.7, 1, 0.001).replace('<div class="an-f an-f2">', '<div class="an-f an-f2" id="anEcBox"' + (AN.hpcD.ec > 0 ? '' : ' hidden') + '>')}</div>
+   </div><p class="note">Valores por defecto genéricos: M₁ = 0,5, α₁ = 30°, D = 0,5, σ = 1, r<sub>m</sub> = 0,30 m.</p></section>`;
+  if (!AN_HPC.ok) return head + ctl + anErr(AN_HPC.error, 1);
+  const h = AN_HPC;
+  const kpis = `<div class="tiles">${anKpi('Etapas N', String(h.N), `exacto ${fmt(h.ns, 2)}`)}${anKpi('π primera etapa', fmt(h.pcs, 3), '')}${anKpi('α₂', fmt(h.a2, 1), '°')}${anKpi('U (radio medio)', fmt(h.U, 0), 'm/s')}${anKpi('Régimen', fmt(h.rpm, 0), 'rpm')}${anKpi('M₁R', fmt(h.M1R, 3), '')}${anKpi('Ψ', fmt(h.Psi, 3), 'carga')}${anKpi('Φ', fmt(h.Phi, 3), 'flujo')}</div>`;
+  const tri = anTriangles([
+    { title: 'Entrada del rotor (1)', vecs: [{ x: h.u, y: h.v1, lab: `V₁ = ${fmt(h.V1, 0)} m/s, α₁ = ${fmt(h.a1, 1)}°`, cls: 'v1' }, { x: h.u, y: -h.v2, lab: `V₁R = ${fmt(h.V2, 0)} m/s, β₁ = ${fmt(h.a2, 1)}°`, cls: 'v2', dy: 14 }], U: [{ x: h.u, y: -h.v2 }, { x: h.u, y: h.v1 }], notes: [`u = ${fmt(h.u, 1)} m/s · U = ${fmt(h.U, 1)} m/s`] },
+    { title: 'Salida del rotor (2)', vecs: [{ x: h.u, y: h.v2, lab: `V₂ = ${fmt(h.V2, 0)} m/s, α₂ = ${fmt(h.a2, 1)}°`, cls: 'v1' }, { x: h.u, y: -h.v1, lab: `V₂R = ${fmt(h.V1, 0)} m/s, β₂ = ${fmt(h.a1, 1)}°`, cls: 'v2', dy: 14 }], U: [{ x: h.u, y: -h.v1 }, { x: h.u, y: h.v2 }], notes: [`v₁ = ${fmt(h.v1, 1)} · v₂ = ${fmt(h.v2, 1)} m/s`] }
+  ], { H: 360 });
+  // figura de diseño reproducida
+  const g = h.g, ec = h.ec, D = AN.hpcD.D, s = AN.hpcD.sigma, al = []; for (let a = 0; a <= 70; a += 1) al.push(a);
+  const Ms = [0.3, 0.4, 0.5, 0.6, 0.7];
+  const series = Ms.map((M, k) => ({ pts: al.map(a => [a, Analysis.hpcChart(a, M, D, s, ec, g).pcs]), cls: 'ln1 sq' + k, label: 'M₁ ' + fmt(M, 1) })).concat([{ pts: al.map(a => [a, Analysis.hpcChart(a, 0.5, D, s, ec, g).wrV]), cls: 'ln2', label: 'ωr/V₁', lab: [52, Analysis.hpcChart(52, .5, D, s, ec, g).wrV], dx: 6, dy: 12 }]);
+  const chartA = anPlot({ id: 'anF2a', Rr: 58, x0: 0, x1: 70, y0: 0.8, y1: 2.6, xt: [0, 10, 20, 30, 40, 50, 60, 70], yt: [0.8, 1.2, 1.6, 2, 2.4], yd: 1, xl: 'α₁ [°]', yl: 'π de etapa · ωr/V₁', series, points: [{ x: h.a1, y: h.pcs, label: 'diseño' }, { x: h.a1, y: h.U / h.V1, cls: 'dp2' }], aria: 'π de etapa y ωr/V₁ frente a α₁' });
+  const chartB = anPlot({ id: 'anF2b', W: 300, x0: 0, x1: 70, y0: 0, y1: 90, xt: [0, 20, 40, 60], yt: [0, 30, 60, 90], xl: 'α₁ [°]', yl: 'α₂ [°]', series: [{ pts: al.map(a => [a, Analysis.alpha2(a, D, s)]), cls: 'ln2' }], points: [{ x: h.a1, y: h.a2 }], aria: 'α₂ frente a α₁' });
+  const rows = h.stages.map(st => `<tr><td>${st.k}</td><td class="n">${fmt(st.Tin, 1)}</td><td class="n">${fmt(st.Tout, 1)}</td><td class="n">${fmt(st.tau, 4)}</td><td class="n">${fmt(st.pi, 4)}</td><td class="n">${fmt(st.Pin / 1000, 1)}</td><td class="n">${fmt(st.Pout / 1000, 1)}</td></tr>`).join('');
+  return head + ctl + anChips(h.warnings, 'Diseño dentro de los límites habituales') + kpis +
+    `<div class="an-stack"><section class="card an-card"><h3>Triángulos de velocidades (todas las etapas)</h3>${tri}<p class="note">Eje horizontal: dirección axial; eje vertical: dirección de giro. Por simetría, el triángulo de entrada al rotor es el de salida dado la vuelta.</p></section>
+     <section class="card an-card"><h3>Figura de diseño de la etapa</h3><p class="note" style="margin-top:0">D = ${fmt(D, 2)}, σ = ${fmt(s, 2)}, e<sub>c</sub> = ${fmt(ec, 3)}. Izquierda: π de etapa para cada M₁ (azules) y ωr/V₁ (discontinua). Derecha: α₂.</p><div class="an-2plots">${chartA}${chartB}</div><p class="note">Curvas recalculadas con las eqs. 3.39–3.45. Con D = 0,5, σ = 1 y e<sub>c</sub> = 0,9 coinciden con la figura del enunciado. Círculo: punto elegido.</p></section></div>
+    <section class="card an-card"><h3>Etapa a etapa</h3><div><table><thead><tr><th>Etapa</th><th>T<sub>t</sub> entrada [K]</th><th>T<sub>t</sub> salida [K]</th><th>τ etapa</th><th>π etapa</th><th>P<sub>t</sub> entrada [kPa]</th><th>P<sub>t</sub> salida [kPa]</th></tr></thead><tbody>${rows}</tbody></table></div>
+     <p class="note">π total de las ${h.N} etapas: ${fmt(h.piTot, 4)} (π<sub>HPC</sub> del ciclo: ${fmt(h.dp.res.pihpc, 4)}). Área a la entrada ${fmt(h.Ain, 4)} m², a la salida ${fmt(h.Aout, 4)} m².</p></section>
+    ${anSheetBlock(h.sheet, 'Cálculo paso a paso del compresor', 'compresor_de_alta.txt')}${anNav(3, 5, 'turbina de alta')}`;
+}
+function anInit4() {
+  anBindOpts(() => { const y = scrollY; renderAnalysis(); scrollTo(0, y); });
+  const cb = $('#anEcAuto');
+  if (cb) cb.addEventListener('change', () => { AN.hpcD.ec = cb.checked ? null : (AN_HPC && AN_HPC.ok ? +AN_HPC.ecEq.toFixed(3) : 0.9); anSave(); const y = scrollY; renderAnalysis(); scrollTo(0, y); });
+  if (AN_HPC && AN_HPC.ok) anBindSheet(AN_HPC.sheet, 'compresor de alta');
+}
+
+/* ================= Paso 5 · Turbina de alta ================= */
+let AN_HPT = null;
+function anStep5() {
+  const hpc = Analysis.hpcDesign(AN, AN.hpcD);
+  AN_HPT = Analysis.hptDesign(AN, AN.hptD, hpc);
+  const head = `<h2 class="an-h">5 · Turbina de alta</h2>
+  ${anLearn(`<p>La HPT se diseña como <b>una sola etapa</b> (estátor + rotor) con <b>velocidad axial constante</b> y <b>salida sin giro</b> (α₃ = 0). Tiene que extraer el salto de temperatura que pide el compresor de alta: ${eq('ΔT<sub>t</sub> = T<sub>t4</sub> − T<sub>t45</sub>')}.</p>
+   <ul><li><b>Se eligen</b> el coeficiente de carga ${eq('Ψ = c<sub>p</sub>ΔT<sub>t</sub>/U²')} y el de flujo ${eq('Φ = u/U')}. Con Ψ fijado, la velocidad de pala necesaria es U = √(c<sub>p</sub>ΔT<sub>t</sub>/Ψ).</li>
+   <li>Con salida sin giro, carga y reacción van juntas: ${eq('R<sub>t</sub> = 1 − Ψ/2')} (eq. 4.31). Más Ψ significa menos etapas pero peor rendimiento; Ψ > 2 daría reacción negativa.</li>
+   <li>Triángulos: ${eq('v₂ = ΨU')}, ${eq('tan β₂ = (v₂ − U)/u')}, ${eq('tan β₃ = U/u')}. La figura de diseño da la deflexión ε = β₂ + β₃ en función de β₂, con curvas de Ψ/Φ y de R<sub>t</sub>/Φ.</li>
+   <li><b>Comprobaciones de diseño:</b> α₂ ≤ 70° (si no, pérdidas inaceptables), M₂ > 1 (el estátor de la primera etapa está bloqueado y fija el caudal del motor) y M₃R < 0,9.</li>
+   <li>Va en el mismo eje que el HPC, así que gira a la misma ω (paso 4): su radio medio tiene que ser r = U/ω.</li></ul>`, !anSeen(5))}`;
+  const ctl = `<section class="card an-card"><h3>Parámetros elegidos</h3><div class="an-hmctl">${anOptField('hptD.Psi', 'Ψ (coeficiente de carga)', '', 0.5, 3, 0.01, 'an_Psi')}${anOptField('hptD.Phi', 'Φ (coeficiente de flujo)', '', 0.2, 1.5, 0.01, 'an_Phi')}</div>
+   <p class="note">Valores por defecto genéricos: Ψ = 1,6 (R<sub>t</sub> = 0,2) y Φ = 0,65, que cumplen las tres comprobaciones con el motor de ejemplo.</p></section>`;
+  if (!AN_HPT.ok) return head + ctl + anErr(AN_HPT.error, 1);
+  const t = AN_HPT;
+  const chk = (ok, txt) => `<li class="${ok ? 'okc' : 'badc'}"><span aria-hidden="true">${ok ? '✓' : '✗'}</span> ${txt}</li>`;
+  const checks = `<ul class="an-checks">${chk(t.a2 <= 70, `α₂ = ${fmt(t.a2, 1)}° ≤ 70°`)}${chk(t.M2 > 1, `M₂ = ${fmt(t.M2, 3)} > 1 (estátor bloqueado)`)}${chk(t.M3R < 0.9, `M₃R = ${fmt(t.M3R, 3)} < 0,9`)}${chk(t.Rt >= 0, `R<sub>t</sub> = ${fmt(t.Rt, 3)} ≥ 0`)}</ul>`;
+  const kpis = `<div class="tiles">${anKpi('ΔT_t', fmt(t.dT, 1), 'K')}${anKpi('U necesaria', fmt(t.U, 0), 'm/s')}${anKpi('R_t', fmt(t.Rt, 3), '')}${anKpi('α₂', fmt(t.a2, 1), '°')}${anKpi('β₂', fmt(t.b2, 1), '°')}${anKpi('β₃', fmt(t.b3, 1), '°')}${t.rmH ? anKpi('r_m,HPT', fmt(t.rmH, 3), `m (${fmt(t.ratio, 2)}× el del HPC)`) : ''}</div>`;
+  const tri = anTriangles([
+    { title: 'Salida del estátor / entrada al rotor (2)', vecs: [{ x: t.u, y: t.v2, lab: `V₂ = ${fmt(t.V2, 0)} m/s, α₂ = ${fmt(t.a2, 1)}°`, cls: 'v1' }, { x: t.u, y: t.v2 - t.U, lab: `V₂R = ${fmt(t.V2R, 0)} m/s, β₂ = ${fmt(t.b2, 1)}°`, cls: 'v2', dy: -6 }], U: [{ x: t.u, y: t.v2 - t.U }, { x: t.u, y: t.v2 }], notes: [`u = ${fmt(t.u, 1)} m/s · v₂ = ${fmt(t.v2, 1)} m/s`] },
+    { title: 'Salida del rotor (3)', vecs: [{ x: t.u, y: 0, lab: `V₃ = ${fmt(t.u, 0)} m/s, α₃ = 0°`, cls: 'v1', dy: -6 }, { x: t.u, y: -t.U, lab: `V₃R = ${fmt(t.V3R, 0)} m/s, β₃ = ${fmt(t.b3, 1)}°`, cls: 'v2' }], U: [{ x: t.u, y: -t.U }, { x: t.u, y: 0 }], notes: [`U = ${fmt(t.U, 1)} m/s`] }
+  ], { down: true, H: 340 });
+  const b = []; for (let x = 0; x <= 60; x += 0.5) b.push(x);
+  const PP = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4], RR = [0, 0.2, 0.5, 1, 1.5];
+  const LP = [0.5, 1, 1.5, 2, 3, 4], LR = [0, 0.5, 1.5];
+  const series = PP.map(k => ({ pts: b.map(x => [x, x + Math.atan(k - Math.tan(x * Math.PI / 180)) * 180 / Math.PI]), cls: 'ln4', label: LP.includes(k) ? 'Ψ/Φ ' + fmt(k, k % 1 ? 1 : 0) : '', lab: [2, 2 + Math.atan(k - Math.tan(2 * Math.PI / 180)) * 180 / Math.PI], dx: 2, dy: -3 }))
+    .concat(RR.map(k => ({ pts: b.map(x => [x, x + Math.atan(2 * k + Math.tan(x * Math.PI / 180)) * 180 / Math.PI]), cls: 'ln3', label: LR.includes(k) ? 'R/Φ ' + fmt(k, 1) : '', lab: [58, 58 + Math.atan(2 * k + Math.tan(58 * Math.PI / 180)) * 180 / Math.PI], anchor: 'end', dx: -2, dy: -4 })));
+  const fig = anPlot({ id: 'anF3', W: 560, H: 380, x0: 0, x1: 60, y0: 20, y1: 140, xt: [0, 10, 20, 30, 40, 50, 60], yt: [20, 40, 60, 80, 100, 120, 140], xl: 'β₂ [°]', yl: 'ε = β₂ + β₃ [°]', series, points: [{ x: t.b2, y: t.eps, label: 'diseño' }], aria: 'Figura de diseño de la turbina' });
+  return head + ctl + `<section class="card an-card"><h3>Comprobaciones</h3>${checks}</section>` + kpis +
+    `<div class="an-stack"><section class="card an-card"><h3>Triángulos de velocidades</h3>${tri}<p class="note">Eje horizontal: dirección axial; eje vertical: dirección de giro (U hacia abajo, como en los apuntes).</p></section>
+     <section class="card an-card"><h3>Figura de diseño de la turbina</h3>${fig}<div class="an-legend"><span><i class="ln" style="background:var(--s4)"></i>Ψ/Φ constante</span><span><i class="ln dash" style="border-color:var(--s3)"></i>R<sub>t</sub>/Φ constante</span><span><i class="pt"></i>Punto de diseño (Ψ/Φ = ${fmt(t.Psi / t.Phi, 2)}, R<sub>t</sub>/Φ = ${fmt(t.Rt / t.Phi, 2)})</span></div></section></div>
+    ${anSheetBlock(t.sheet, 'Cálculo paso a paso de la turbina', 'turbina_de_alta.txt')}${anNav(4, 6, 'fuera de diseño')}`;
+}
+function anInit5() { anBindOpts(() => { const y = scrollY; renderAnalysis(); scrollTo(0, y); }); if (AN_HPT && AN_HPT.ok) anBindSheet(AN_HPT.sheet, 'turbina de alta'); }
+
+/* ================= Paso 6 · Fuera de diseño ================= */
+let AN_OD = null;
+function anStep6() {
+  const dp = Analysis.designPoint(AN);
+  if (dp.ok && !(AN.od.Tt4 > 0)) AN.od.Tt4 = Math.round(dp.res.Tt4 + 100);
+  AN_OD = Analysis.offDesign(AN, AN.od);
+  const head = `<h2 class="an-h">6 · Fuera de diseño</h2>
+  ${anLearn(`<p>El motor ya está «construido»: sus áreas, sus turbinas y sus toberas son las del punto de diseño. Ahora se calcula cómo funciona en otra condición, por defecto <b>a nivel del mar y parado (M₀ = 0)</b>, como al despegue. Ya no se eligen π ni α: salen del propio motor.</p>
+   <ul><li><b>Turbinas bloqueadas:</b> la HPT tiene la entrada bloqueada y su τ<sub>tH</sub> se queda como en diseño. El caudal del núcleo lo fija ${eq('ṁ(1+f)√T<sub>t4</sub>/P<sub>t4</sub> = cte')}.</li>
+   <li><b>Toberas de área fija:</b> la de núcleo fija τ<sub>tL</sub> con ${eq('π<sub>tL</sub>·MFP(M₈)/√τ<sub>tL</sub> = cte')}; la del fan, junto con la del núcleo, fija la <b>relación de derivación</b>: ${eq('α = α<sub>D</sub>·(P<sub>t19</sub>/P<sub>t4</sub>)/(P<sub>t19</sub>/P<sub>t4</sub>)<sub>D</sub>·√[(T<sub>t4</sub>/T<sub>t19</sub>)/(T<sub>t4</sub>/T<sub>t19</sub>)<sub>D</sub>]·MFP(M₁₉)/MFP<sub>D</sub>')}.</li>
+   <li><b>Fan y LPC en el mismo eje:</b> se supone que la potencia se reparte entre fan secundario y núcleo en la misma proporción que en diseño (cierre «constant power split» de los apuntes).</li>
+   <li><b>Iteración:</b> las incógnitas son τ<sub>f</sub>, τ<sub>LPC</sub>, τ<sub>tL</sub>, α y los Mach de las toberas. Se parte de los valores de diseño y se repite hasta que no cambian.</li>
+   <li>T<sub>t4</sub> en esta condición es un <b>supuesto</b>: al despegue suele ser mayor que en crucero. Por defecto, la de diseño + 100 K.</li>
+   <li>A M₀ = 0 la velocidad de vuelo es nula: η<sub>P</sub> y η<sub>O</sub> valen 0 por definición, aunque el motor dé mucho empuje.</li></ul>`, !anSeen(6))}`;
+  const ctl = `<section class="card an-card"><h3>Condición fuera de diseño</h3><div class="an-hmctl">${anOptField('od.h', 'Altitud', 'm', 0, 15000, 1)}${anOptField('od.M0', 'Mach', '', 0, 0.95, 0.01)}${anOptField('od.Tt4', 'T_t4 en esta condición (supuesto)', 'K', 1000, 2200, 1, 'an_odTt4')}</div>
+   <button type="button" class="btn" id="anOdReset">Restablecer: nivel del mar, M₀ = 0, T<sub>t4</sub> de diseño + 100 K</button></section>`;
+  if (!dp.ok) return head + ctl + anErr(dp.error, 1);
+  if (!AN_OD.ok) return head + ctl + anErr(AN_OD.error, 1);
+  const o = AN_OD, r = o.res, d = dp.res, dm = dp.derive;
+  const row = (n, a, b, dec, u, noRatio) => `<tr><td style="text-align:left">${anSub(n)}</td><td class="n">${fmt(a, dec)}</td><td class="n">${isFinite(b) ? fmt(b, dec) : '–'}</td><td class="n">${!noRatio && isFinite(a) && isFinite(b) && a !== 0 && b !== 0 ? '×' + fmt(b / a, 2) : '–'}</td><td style="text-align:left;color:var(--muted)">${u}</td></tr>`;
+  const und = r.dek <= 0 || r.Fsp <= 0;
+  const tbl = `<table><thead><tr><th style="text-align:left">Magnitud</th><th>Diseño (crucero)</th><th>Fuera de diseño</th><th>Relación</th><th style="text-align:left">Unidad</th></tr></thead><tbody>
+    ${row('Altitud', AN.h0, o.h, 0, 'm', 1)}${row('Mach de vuelo', AN.M0, o.M0, 2, '', 1)}${row('T_t4', d.Tt4, o.Tt4, 0, 'K')}
+    ${row('Empuje F', d.size.F / 1000, r.size.F / 1000, 2, 'kN')}${row('Empuje específico F/ṁ₀', d.Fsp, r.Fsp, 1, 'N·s/kg')}${row('TSFC', d.tsfc * 1e6, r.tsfc * 1e6, 2, 'mg/(N·s)')}
+    ${row('η térmico', d.etaT * 100, und ? NaN : r.etaT * 100, 1, '%')}${row('η propulsivo', d.etaP * 100, r.etaP * 100, 1, '%')}${row('η global', d.etaO * 100, r.etaO * 100, 1, '%')}
+    ${row('Caudal total ṁ₀', dm.m0, o.m0, 1, 'kg/s')}${row('Caudal del núcleo', dm.mcore, o.mcore, 2, 'kg/s')}${row('Relación de derivación α', AN.alpha, o.alpha, 3, '')}
+    ${row('π fan', d.pif, o.st.pf, 3, '')}${row('π LPC', d.pilpc, o.st.pl, 3, '')}${row('π HPC', d.pihpc, o.st.ph, 3, '')}${row('OPR', d.pic, r.pic, 2, '')}${row('Relación combustible/aire f', d.f, r.f, 5, '')}${row('Caudal de combustible', d.size.mf, r.size.mf, 4, 'kg/s')}
+    ${row('ṁ corregido en el HPC', AN.hpc.mc, o.mc25, 2, 'kg/s')}</tbody></table>`;
+  const kpis = `<div class="tiles">${anKpi('Empuje F', fmt(r.size.F / 1000, 1), 'kN')}${anKpi('TSFC', fmt(r.tsfc * 1e6, 2), 'mg/(N·s)')}${anKpi('η_T', und ? '–' : fmt(r.etaT * 100, 1), '%')}${anKpi('η_P', fmt(r.etaP * 100, 1), o.M0 === 0 ? '% (M₀ = 0)' : '%')}${anKpi('η_O', fmt(r.etaO * 100, 1), '%')}${anKpi('α', fmt(o.alpha, 3), `diseño ${fmt(AN.alpha, 2)}`)}</div>`;
+  const M = Analysis.HPC_MAP, lp = [M.line.mcMin, M.line.mcMax];
+  const mapc = anPlot({ id: 'anOdMap', W: 520, H: 300, x0: 2.5, x1: 22.5, y0: 1, y1: 9, xt: [2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20, 22.5], xd: 1, yt: [1, 3, 5, 7, 9], xl: 'ṁ corregido en 2.5 [kg/s]', yl: 'π HPC', series: [{ pts: lp.map(m => [m, Analysis.map.piFromMc(m)]), cls: 'ln1', label: 'línea de operación', lab: [8, Analysis.map.piFromMc(8)], dx: -4, dy: -10, anchor: 'end' }], points: [{ x: AN.hpc.mc, y: AN.hpc.pi, label: 'diseño', ldx: -10, ldy: -10, anchor: 'end' }, { x: o.mc25, y: o.st.ph, cls: 'dp2', label: 'fuera de diseño', ldx: 6, ldy: 18 }], aria: 'Punto de funcionamiento del HPC en el mapa' });
+  const conv = `<table><thead><tr><th>Iteración</th><th>τ<sub>tL</sub></th><th>α</th><th>τ<sub>f</sub></th><th>Error</th></tr></thead><tbody>${o.hist.slice(0, 12).map(h => `<tr><td>${h.it}</td><td class="n">${fmt(h.ttl, 5)}</td><td class="n">${fmt(h.al, 4)}</td><td class="n">${fmt(h.tf, 5)}</td><td class="n">${h.err.toExponential(1).replace('.', ',')}</td></tr>`).join('')}</tbody></table>`;
+  const warn = r.warnings.slice(); const dev = Math.abs(o.st.ph - Analysis.map.piFromMc(o.mc25));
+  if (dev > 0.4) warn.push('El punto del HPC queda a ' + dev.toFixed(2) + ' de π de la línea de operación del mapa: el modelo simplificado no fuerza el mapa, compáralo en el informe.');
+  return head + ctl + anChips(warn, 'Convergido en ' + o.it + ' iteraciones') + kpis +
+    `<section class="card an-card"><h3>Diseño frente a fuera de diseño</h3>${tbl}</section>
+     <div class="an-cols"><section class="card an-card"><h3>Compresor de alta en su mapa</h3>${mapc}<p class="note">El modelo no usa el mapa para calcular; este gráfico sirve para comprobar que el punto fuera de diseño cae cerca de la línea de operación.</p></section>
+     <section class="card an-card"><h3>Convergencia</h3>${conv}</section></div>
+    ${anSheetBlock(o.sheet.concat(Calcs.build(r).sections), 'Cálculo paso a paso (iteración y ciclo resultante)', 'fuera_de_diseno.txt')}${anNav(5, 7, 'resumen')}`;
+}
+function anInit6() {
+  anBindOpts(() => { const y = scrollY; renderAnalysis(); scrollTo(0, y); });
+  $('#anOdReset').addEventListener('click', () => { AN.od = Analysis.OD_DEF(); anSave(); renderAnalysis(); });
+  if (AN_OD && AN_OD.ok) anBindSheet(AN_OD.sheet.concat(Calcs.build(AN_OD.res).sections), 'fuera de diseño');
+}
+
+/* ================= Paso 7 · Resumen ================= */
+function anSummaryTables() {
+  const dp = Analysis.designPoint(AN), T = [];
+  const src = k => (AN.src || {})[k] || '';
+  const d1 = [['Altitud de crucero h₀', AN.h0, 'm', 'h0'], ['Mach de crucero M₀', AN.M0, '', 'M0'], ['Relación de derivación α', AN.alpha, '', 'alpha'], ['OPR', AN.OPR, '', 'OPR'], ['π fan', AN.pif, '', 'pif'],
+    ['π HPC (mapa)', AN.hpc.pi, '', 'hpc.pi'], ['π LPC = OPR/(π_f·π_HPC)', dp.derive.pilpc, '', ''], ['η HPC isentrópica (mapa)', AN.hpc.eta, '', 'hpc.eta'], ['ṁ corregido HPC (mapa)', AN.hpc.mc, 'kg/s', 'hpc.mc'],
+    ['Caudal del núcleo', dp.derive.mcore, 'kg/s', ''], ['Caudal total ṁ₀', dp.derive.m0, 'kg/s', ''], ['T_t4', AN.Tt4, 'K', 'Tt4'], ['h_PR', AN.fuel, 'MJ/kg', 'fuel'],
+    ['π_d máx', AN.eff.pidmax, '', 'eff.pidmax'], ['e_f', AN.eff.ef, '', 'eff.ef'], ['e_LPC', AN.eff.ec, '', 'eff.ec'], ['e_t', AN.eff.et, '', 'eff.et'], ['π_b', AN.eff.pib, '', 'eff.pib'], ['η_b', AN.eff.etab, '', 'eff.etab'], ['η_m', AN.eff.etam, '', 'eff.etam'], ['π_n', AN.eff.pin, '', 'eff.pin'], ['π_fn', AN.eff.pifn, '', 'eff.pifn'],
+    ['γ_c / c_pc', fmt(AN.gas.gc, 3) + ' / ' + fmt(AN.gas.cpc, 1), 'J/(kg·K)', 'gas.cpc'], ['γ_t / c_pt', fmt(AN.gas.gt, 3) + ' / ' + fmt(AN.gas.cpt, 1), 'J/(kg·K)', 'gas.cpt']];
+  T.push({ id: 'datos', title: 'Datos del motor y fuentes', head: ['Parámetro', 'Valor', 'Unidad', 'Fuente o supuesto'], rows: d1.map(x => [x[0], typeof x[1] === 'number' ? fmt(x[1], Math.abs(x[1]) < 10 ? 4 : 1) : x[1], x[2], x[3] ? src(x[3]) : 'calculado']) });
+  if (dp.ok) {
+    const od = Analysis.offDesign(AN, AN.od), r = dp.res, o = od.ok ? od.res : null;
+    const R = (n, a, b, dec, u) => [n, fmt(a, dec), o ? fmt(b, dec) : '–', u];
+    T.push({ id: 'res', title: 'Resultados: punto de diseño y fuera de diseño', head: ['Magnitud', 'Diseño (crucero)', o ? `Fuera de diseño (h = ${fmt(od.h, 0)} m, M₀ = ${fmt(od.M0, 2)})` : 'Fuera de diseño', 'Unidad'],
+      rows: [R('T_t4', r.Tt4, od.Tt4, 0, 'K'), R('Empuje F', r.size.F / 1000, o && o.size.F / 1000, 2, 'kN'), R('Empuje específico', r.Fsp, o && o.Fsp, 1, 'N·s/kg'), R('TSFC', r.tsfc * 1e6, o && o.tsfc * 1e6, 2, 'mg/(N·s)'),
+        R('η_T', r.etaT * 100, o && o.etaT * 100, 1, '%'), R('η_P', r.etaP * 100, o && o.etaP * 100, 1, '%'), R('η_O', r.etaO * 100, o && o.etaO * 100, 1, '%'), R('ṁ₀', dp.derive.m0, od.m0, 1, 'kg/s'), R('α', AN.alpha, od.alpha, 3, ''), R('OPR', r.pic, o && o.pic, 2, '')] });
+    const h = Analysis.hpcDesign(AN, AN.hpcD);
+    if (h.ok) T.push({ id: 'hpc', title: 'Compresor de alta', head: ['Magnitud', 'Valor', 'Unidad'], rows: [['M₁ (elegido)', fmt(h.M1, 2), ''], ['α₁ (elegido)', fmt(h.a1, 1), '°'], ['α₂', fmt(h.a2, 2), '°'], ['V₁', fmt(h.V1, 1), 'm/s'], ['u', fmt(h.u, 1), 'm/s'], ['U', fmt(h.U, 1), 'm/s'], ['M₁R', fmt(h.M1R, 3), ''], ['Ψ', fmt(h.Psi, 3), ''], ['Φ', fmt(h.Phi, 3), ''], ['Reacción', '0,5', ''], ['π primera etapa', fmt(h.pcs, 4), ''], ['ΔT_t por etapa', fmt(h.dTr, 2), 'K'], ['Número de etapas', String(h.N), ''], ['e_c', fmt(h.ec, 4), ''], ['r_m (supuesto)', fmt(h.rm, 3), 'm'], ['Régimen', fmt(h.rpm, 0), 'rpm']] });
+    const t = Analysis.hptDesign(AN, AN.hptD, h);
+    if (t.ok) T.push({ id: 'hpt', title: 'Turbina de alta', head: ['Magnitud', 'Valor', 'Unidad'], rows: [['Ψ (elegido)', fmt(t.Psi, 3), ''], ['Φ (elegido)', fmt(t.Phi, 3), ''], ['ΔT_t', fmt(t.dT, 1), 'K'], ['U', fmt(t.U, 1), 'm/s'], ['R_t', fmt(t.Rt, 3), ''], ['α₂', fmt(t.a2, 2), '°'], ['β₂', fmt(t.b2, 2), '°'], ['β₃', fmt(t.b3, 2), '°'], ['M₂', fmt(t.M2, 3), ''], ['M₃R', fmt(t.M3R, 3), ''], ['r_m', t.rmH ? fmt(t.rmH, 3) : '–', 'm']] });
+  }
+  return T;
+}
+function anStep7() {
+  const T = anSummaryTables();
+  return `<h2 class="an-h">7 · Resumen</h2>
+  ${anLearn(`<p>Todas las tablas del análisis en un sitio: los datos del motor con su fuente (lo que anotaste en el paso 1) y los resultados de cada paso con los parámetros que se eligieron. Con «Copiar tablas» se copian separadas por tabuladores, de modo que al pegarlas en un procesador de textos o una hoja de cálculo quedan como tablas.</p>`, !anSeen(7))}
+  <div class="cl-bar"><span class="sp"></span><button type="button" class="btn" id="anSumCopy">Copiar tablas</button><button type="button" class="btn" id="anSumCsv">Descargar .csv</button></div>
+  ${T.map(t => `<section class="card an-card"><h3>${t.title}</h3><div class="tscroll" style="max-height:none"><table><thead><tr>${t.head.map((h, i) => `<th style="text-align:${(t.id === 'res' ? (i === 1 || i === 2) : i === 1) ? 'right' : 'left'}">${h}</th>`).join('')}</tr></thead><tbody>${t.rows.map(r => `<tr>${r.map((c, i) => `<td style="text-align:${(t.id === 'res' ? (i === 1 || i === 2) : i === 1) ? 'right' : 'left'}"${i === 3 && t.id === 'datos' && !c ? ' class="miss"' : ''}>${i === 3 && t.id === 'datos' && !c ? 'sin fuente' : anSub(String(c))}</td>`).join('')}</tr>`).join('')}</tbody></table></div></section>`).join('')}
+  <p class="note">«sin fuente»: falta anotar de dónde sale el dato (paso 1).</p>${anNav(6)}`;
+}
+function anInit7() {
+  anBindOpts(() => { });
+  const T = anSummaryTables();
+  const tsv = () => T.map(t => [t.title, t.head.join('\t')].concat(t.rows.map(r => r.join('\t'))).join('\n')).join('\n\n');
+  $('#anSumCopy').addEventListener('click', e => { const b = e.target; try { navigator.clipboard.writeText(tsv()).then(() => b.textContent = 'Copiado ✓', () => b.textContent = 'Usa Descargar'); } catch (err) { b.textContent = 'Usa Descargar'; } setTimeout(() => b.textContent = 'Copiar tablas', 1800); });
+  $('#anSumCsv').addEventListener('click', () => anSaveFile('resumen_' + (AN.name || 'motor').replace(/[^\wáéíóúñ-]+/gi, '_') + '.csv', T.map(t => [t.title, t.head.join(';')].concat(t.rows.map(r => r.join(';'))).join('\n')).join('\n\n'), 'text/csv'));
+}
+
+Object.assign(INFO, {
+  an_M1: () => ['Mach de entrada M₁', `<p>Mach absoluto a la entrada de cada etapa. Más M₁ da más presión por etapa (menos etapas), pero acerca el rotor a condiciones transónicas. Recomendado entre 0,4 y 0,6.</p>`],
+  an_a1: () => ['Ángulo de entrada α₁', `<p>Ángulo del flujo absoluto a la entrada de la etapa, medido desde la dirección axial. En la primera etapa lo fijan los álabes guía de entrada (IGV). Un α₁ alto exige más velocidad de pala (ωr/V₁ crece mucho) y gira menos el flujo.</p>`],
+  an_Psi: () => ['Coeficiente de carga Ψ', `<p>${eq('Ψ = c<sub>p</sub>ΔT<sub>t</sub>/U²')}: trabajo de la etapa relativo a la velocidad de pala. Con salida sin giro, ${eq('R<sub>t</sub> = 1 − Ψ/2')}. Ψ alto: menos etapas, peor rendimiento; Ψ > 2 da reacción negativa.</p>`],
+  an_Phi: () => ['Coeficiente de flujo Φ', `<p>${eq('Φ = u/U')}: velocidad axial relativa a la de pala. Junto con Ψ fija los ángulos: tan α₂ = Ψ/Φ, tan β₃ = 1/Φ.</p>`],
+  an_odTt4: () => ['T_t4 fuera de diseño', `<p>Temperatura de entrada a turbina en la condición calculada. Es una decisión de control del motor (un supuesto): al despegue suele ser la máxima. Por defecto, la de diseño + 100 K.</p>`]
 });
 
 
